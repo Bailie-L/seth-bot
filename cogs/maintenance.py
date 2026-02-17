@@ -1,0 +1,211 @@
+"""
+Seth Maintenance - Feed and Heal your Seth (STANDARDIZED VISUALS)
+"""
+import discord
+from discord.ext import commands
+import aiosqlite
+from datetime import datetime
+import config
+from utils.formatting import SethVisuals
+
+class Maintenance(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.db_path = config.DATABASE_PATH
+
+    @commands.command(name='feed')
+    async def feed_seth(self, ctx):
+        """Feed your Seth to reduce hunger (costs 1 food)"""
+        user_id = ctx.author.id
+
+        async with aiosqlite.connect(self.db_path) as db:
+            # Get Seth and resources
+            cursor = await db.execute(
+                """SELECT s.seth_id, s.name, s.hunger, r.food
+                FROM seths s
+                JOIN resources r ON s.user_id = r.user_id
+                WHERE s.user_id = ? AND s.is_alive = 1""",
+                (user_id,)
+            )
+            result = await cursor.fetchone()
+
+            if not result:
+                await ctx.send("💀 You don't have a living Seth to feed!")
+                return
+
+            seth_id, name, hunger, food = result
+
+            if food < 1:
+                embed = discord.Embed(
+                    title="❌ No Food!",
+                    description=f"You need food to feed {name}!\nUse `!mine` to gather resources.",
+                    color=discord.Color.red()
+                )
+                await ctx.send(embed=embed)
+                return
+
+            if hunger == 0:
+                embed = discord.Embed(
+                    title="😊 Not Hungry",
+                    description=f"{name} is not hungry right now!",
+                    color=discord.Color.green()
+                )
+                await ctx.send(embed=embed)
+                return
+
+            # Feed the Seth
+            new_hunger = max(0, hunger - 30)  # Reduce hunger by 30
+
+            await db.execute(
+                "UPDATE seths SET hunger = ? WHERE seth_id = ?",
+                (new_hunger, seth_id)
+            )
+            await db.execute(
+                "UPDATE resources SET food = food - 1 WHERE user_id = ?",
+                (user_id,)
+            )
+            await db.commit()
+
+            # Use standardized hunger display
+            hunger_display = SethVisuals.hunger_bar(new_hunger)
+
+            embed = discord.Embed(
+                title="🍖 Fed Seth!",
+                description=f"{name} has been fed!",
+                color=discord.Color.green()
+            )
+            embed.add_field(name="Stomach Status", value=hunger_display, inline=False)
+            embed.add_field(name="Food Used", value="-1 🍖", inline=True)
+            embed.add_field(name="Food Remaining", value=f"{food - 1} 🍖", inline=True)
+
+            await ctx.send(embed=embed)
+
+    @commands.command(name='heal')
+    async def heal_seth(self, ctx):
+        """Heal your Seth to increase health (costs 1 medicine)"""
+        user_id = ctx.author.id
+
+        async with aiosqlite.connect(self.db_path) as db:
+            # Get Seth and resources
+            cursor = await db.execute(
+                """SELECT s.seth_id, s.name, s.health, r.medicine
+                FROM seths s
+                JOIN resources r ON s.user_id = r.user_id
+                WHERE s.user_id = ? AND s.is_alive = 1""",
+                (user_id,)
+            )
+            result = await cursor.fetchone()
+
+            if not result:
+                await ctx.send("💀 You don't have a living Seth to heal!")
+                return
+
+            seth_id, name, health, medicine = result
+
+            if medicine < 1:
+                embed = discord.Embed(
+                    title="❌ No Medicine!",
+                    description=f"You need medicine to heal {name}!\nUse `!mine` to gather resources.",
+                    color=discord.Color.red()
+                )
+                await ctx.send(embed=embed)
+                return
+
+            if health == 100:
+                embed = discord.Embed(
+                    title="💪 Full Health",
+                    description=f"{name} is already at full health!",
+                    color=discord.Color.green()
+                )
+                await ctx.send(embed=embed)
+                return
+
+            # Heal the Seth
+            new_health = min(100, health + 25)  # Increase health by 25
+
+            await db.execute(
+                "UPDATE seths SET health = ? WHERE seth_id = ?",
+                (new_health, seth_id)
+            )
+            await db.execute(
+                "UPDATE resources SET medicine = medicine - 1 WHERE user_id = ?",
+                (user_id,)
+            )
+            await db.commit()
+
+            # Use standardized health display
+            health_display = SethVisuals.health_bar(new_health, 100)
+
+            embed = discord.Embed(
+                title="💊 Healed Seth!",
+                description=f"{name} has been healed!",
+                color=discord.Color.green()
+            )
+            embed.add_field(name="Health Status", value=health_display, inline=False)
+            embed.add_field(name="Medicine Used", value="-1 💊", inline=True)
+            embed.add_field(name="Medicine Remaining", value=f"{medicine - 1} 💊", inline=True)
+
+            await ctx.send(embed=embed)
+
+    @commands.command(name='damage')
+    async def damage_test(self, ctx):
+        """TEST COMMAND: Damage your Seth (cumulative damage for testing)"""
+        user_id = ctx.author.id
+
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "SELECT seth_id, name, health, hunger FROM seths WHERE user_id = ? AND is_alive = 1",
+                (user_id,)
+            )
+            seth = await cursor.fetchone()
+
+            if not seth:
+                await ctx.send("💀 No living Seth to damage!")
+                return
+
+            seth_id, name, current_health, current_hunger = seth
+
+            # Apply cumulative damage: -20 health, +20 hunger
+            new_health = max(0, current_health - 20)  # Can't go below 0
+            new_hunger = min(100, current_hunger + 20)  # Can't go above 100
+
+            # Update Seth with new damage values
+            await db.execute(
+                "UPDATE seths SET health = ?, hunger = ? WHERE seth_id = ?",
+                (new_health, new_hunger, seth_id)
+            )
+            await db.commit()
+
+            # Use standardized displays for damage report
+            health_display = SethVisuals.health_bar(new_health, 100)
+            hunger_display = SethVisuals.hunger_bar(new_hunger)
+
+            embed = discord.Embed(
+                title="🔨 Test Damage Applied",
+                description=f"{name} took damage!",
+                color=discord.Color.orange()
+            )
+            embed.add_field(name="❤️ Health", value=health_display, inline=False)
+            embed.add_field(name="🍖 Stomach", value=hunger_display, inline=False)
+            embed.add_field(name="Damage Dealt", value=f"-20 health, +20 hunger", inline=False)
+
+            # Add warning if Seth is in critical condition
+            if new_health <= 20:
+                embed.add_field(
+                    name="⚠️ CRITICAL",
+                    value="Seth is dying! Use !heal immediately!",
+                    inline=False
+                )
+            elif new_hunger >= 80:
+                embed.add_field(
+                    name="⚠️ STARVING",
+                    value="Seth is starving! Use !feed immediately!",
+                    inline=False
+                )
+
+            embed.set_footer(text="Use !feed and !heal to fix!")
+
+            await ctx.send(embed=embed)
+
+async def setup(bot):
+    await bot.add_cog(Maintenance(bot))
