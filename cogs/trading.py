@@ -123,7 +123,7 @@ class Trading(commands.Cog):
             )
             result = await cursor.fetchone()
             if not result:
-                await ctx.send(f"❌ You have no resources! Use `!mine` to gather some.")
+                await ctx.send("❌ You have no resources! Use `!mine` to gather some.")
                 return
 
             current_amount = result[0]
@@ -213,7 +213,7 @@ class Trading(commands.Cog):
 
                 embed = discord.Embed(
                     title="✅ **Trade Complete!**",
-                    description=f"Resources successfully transferred!",
+                    description="Resources successfully transferred!",
                     color=0x2ecc71
                 )
                 embed.add_field(

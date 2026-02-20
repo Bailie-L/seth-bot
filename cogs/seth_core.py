@@ -56,7 +56,7 @@ class SethCore(commands.Cog):
             generation = (result[0] + 1) if result[0] else 1
 
             # Name the Seth
-            seth_name = f"{name} Seth" if name else f"Seth Jr."
+            seth_name = f"{name} Seth" if name else "Seth Jr."
 
             # Create the Seth!
             await db.execute(

@@ -4,7 +4,6 @@ Seth Maintenance - Feed and Heal your Seth (STANDARDIZED VISUALS)
 import discord
 from discord.ext import commands
 import aiosqlite
-from datetime import datetime
 import config
 from utils.formatting import SethVisuals
 
@@ -187,7 +186,7 @@ class Maintenance(commands.Cog):
             )
             embed.add_field(name="❤️ Health", value=health_display, inline=False)
             embed.add_field(name="🍖 Stomach", value=hunger_display, inline=False)
-            embed.add_field(name="Damage Dealt", value=f"-20 health, +20 hunger", inline=False)
+            embed.add_field(name="Damage Dealt", value="-20 health, +20 hunger", inline=False)
 
             # Add warning if Seth is in critical condition
             if new_health <= 20:

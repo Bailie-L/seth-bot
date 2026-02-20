@@ -4,7 +4,6 @@ A Discord Tamagotchi with permanent death
 """
 import discord
 from discord.ext import commands
-import asyncio
 from datetime import datetime
 import config
 import database
@@ -23,12 +22,12 @@ bot = commands.Bot(
 @bot.event
 async def on_ready():
     """Bot startup event"""
-    print(f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-    print(f'🤖 Seth Bot is ALIVE!')
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    print('🤖 Seth Bot is ALIVE!')
     print(f'👤 Logged in as: {bot.user.name}')
     print(f'🆔 Bot ID: {bot.user.id}')
     print(f'🌍 Servers: {len(bot.guilds)}')
-    print(f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 
     # Initialize database
     await database.init_db()
@@ -128,9 +127,9 @@ async def on_command_error(ctx, error):
     elif isinstance(error, commands.MissingRequiredArgument):
         await ctx.send(f"⚠️ Missing arguments! Check `{config.BOT_PREFIX}help {ctx.command}`")
     elif isinstance(error, commands.MemberNotFound):
-        await ctx.send(f"❌ User not found! Make sure to mention them with @")
+        await ctx.send("❌ User not found! Make sure to mention them with @")
     elif isinstance(error, commands.BadArgument):
-        await ctx.send(f"❌ Invalid argument! Check the command usage.")
+        await ctx.send("❌ Invalid argument! Check the command usage.")
     elif isinstance(error, commands.MissingPermissions):
         await ctx.send("⛔ You don't have permission to use this command!")
     else:

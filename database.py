@@ -4,7 +4,6 @@ Handles all database operations with aiosqlite
 """
 import aiosqlite
 import os
-from datetime import datetime
 
 DATABASE_PATH = 'data/seth.db'
 
@@ -168,12 +167,3 @@ async def create_drama_tables():
         await db.commit()
         print("✅ Drama tables initialized with NPCs!")
 
-# Add to init_db function
-async def init_db():
-    """Initialize all database tables"""
-    async with aiosqlite.connect(DATABASE_PATH) as db:
-        # ... existing tables ...
-        pass
-    
-    # Add drama tables
-    await create_drama_tables()

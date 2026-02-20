@@ -6,7 +6,7 @@ from discord.ext import commands, tasks
 import aiosqlite
 import config
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 import asyncio
 from utils.formatting import SethVisuals
 
@@ -135,7 +135,6 @@ class DramaV2(commands.Cog):
         npc_list = list(self.npcs.keys())
 
         # Find interesting relationship dynamics
-        drama_candidates = []
 
         async with aiosqlite.connect(self.db_path) as db:
             # Find lovers
@@ -386,7 +385,7 @@ class DramaV2(commands.Cog):
                 if not outcome:
                     outcome = f"🤝 Forgiveness prevails! {npc1} and {npc2} move forward."
                 else:
-                    outcome += f"\n🤝 Fate grants forgiveness!"
+                    outcome += "\n🤝 Fate grants forgiveness!"
             elif winner_index == 1:  # Justice
                 await self.update_relationship(npc1, npc2, -40, 'rivals')
                 await self.update_npc_state(npc1, rival=npc2)
@@ -394,16 +393,16 @@ class DramaV2(commands.Cog):
                 if not outcome:
                     outcome = f"⚖️ Justice served! {npc1} and {npc2} are now bitter rivals!"
                 else:
-                    outcome += f"\n⚖️ Fate demands justice! They become rivals!"
+                    outcome += "\n⚖️ Fate demands justice! They become rivals!"
             else:  # Spread drama
                 # Affect random other NPCs
                 for npc in random.sample(list(self.npcs.keys()), 2):
                     if npc not in [npc1, npc2]:
                         await self.update_relationship(npc1, npc, -10, 'drama_spread')
                 if not outcome:
-                    outcome = f"🔥 The drama spreads! The whole village is talking!"
+                    outcome = "🔥 The drama spreads! The whole village is talking!"
                 else:
-                    outcome += f"\n🔥 Fate spreads the chaos!"
+                    outcome += "\n🔥 Fate spreads the chaos!"
 
         else:  # Mystery/Alliance
             if winner_index == 0:  # Support
@@ -411,18 +410,18 @@ class DramaV2(commands.Cog):
                 if not outcome:
                     outcome = f"👍 The village supports this! {npc1} and {npc2} grow closer."
                 else:
-                    outcome += f"\n👍 Fate smiles upon them!"
+                    outcome += "\n👍 Fate smiles upon them!"
             elif winner_index == 1:  # Oppose
                 await self.update_relationship(npc1, npc2, -15, 'opposed')
                 if not outcome:
                     outcome = f"👎 The village opposes! {npc1} and {npc2} drift apart."
                 else:
-                    outcome += f"\n👎 Fate drives them apart!"
+                    outcome += "\n👎 Fate drives them apart!"
             else:  # Neutral
                 if not outcome:
-                    outcome = f"🤷 The village doesn't care. Life goes on..."
+                    outcome = "🤷 The village doesn't care. Life goes on..."
                 else:
-                    outcome += f"\n🤷 Fate is indifferent..."
+                    outcome += "\n🤷 Fate is indifferent..."
 
         # Post outcome
         embed = discord.Embed(

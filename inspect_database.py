@@ -1,6 +1,5 @@
 import sqlite3
 import os
-from datetime import datetime
 
 print("=" * 60)
 print("PROJECT SETH DATABASE AUDIT")
@@ -26,7 +25,7 @@ cursor.execute("SELECT COUNT(DISTINCT user_id) FROM seths")
 unique_users = cursor.fetchone()[0]
 cursor.execute("SELECT COUNT(*) FROM seths")
 total_seths = cursor.fetchone()[0]
-print(f"\n👤 USER TESTING REALITY:")
+print("\n👤 USER TESTING REALITY:")
 print(f"  Unique users who created Seths: {unique_users}")
 print(f"  Total Seths created: {total_seths}")
 if unique_users == 1:
@@ -60,16 +59,16 @@ if premium == 0:
 try:
     cursor.execute("SELECT COUNT(*) FROM npc_relationships")
     npc_count = cursor.fetchone()[0]
-    print(f"\n🎭 NPC Drama System:")
+    print("\n🎭 NPC Drama System:")
     print(f"  Relationships: {npc_count}")
-except:
+except Exception:
     print("\n🎭 NPC Drama System: ❌ TABLES DON'T EXIST")
     print("  ⚠️ Drama system claims appear FALSE")
 
 # Check resources to see mining activity
 cursor.execute("SELECT user_id, food, medicine, coal FROM resources")
 resources = cursor.fetchall()
-print(f"\n⛏️ Resource holdings:")
+print("\n⛏️ Resource holdings:")
 for r in resources:
     print(f"  User {r[0]}: Food={r[1]}, Medicine={r[2]}, Coal={r[3]}")
 
@@ -78,7 +77,7 @@ cursor.execute("SELECT MIN(birth_time) FROM seths")
 first_birth = cursor.fetchone()[0]
 if first_birth:
     print(f"\n⏰ First Seth created: {first_birth}")
-    print(f"  Project age: Only TODAY's data")
+    print("  Project age: Only TODAY's data")
 
 conn.close()
 print("\n" + "=" * 60)

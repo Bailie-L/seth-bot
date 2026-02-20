@@ -86,7 +86,7 @@ class Public(commands.Cog):
                 if not member:
                     await ctx.send(f"❌ User '{target}' not found! Use `!compare @user` with a mention")
                     return
-            except:
+            except Exception:
                 await ctx.send("❌ Invalid user! Use `!compare @user` with a mention")
                 return
 
@@ -118,7 +118,7 @@ class Public(commands.Cog):
             target_seth = await cursor.fetchone()
 
             if not author_seth:
-                await ctx.send(f"💀 You don't have a living Seth! Use `!start [name]`")
+                await ctx.send("💀 You don't have a living Seth! Use `!start [name]`")
                 return
 
             if not target_seth:
