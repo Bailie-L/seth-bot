@@ -15,6 +15,9 @@ Seth is a virtual pet Discord bot where death is *permanent*. No respawns. No se
 
 ## 📸 Screenshots
 
+### A Seth is Born
+![Birth Announcement](docs/screenshots/birth.png)
+
 ### Caring for Your Seth
 ![Feed and Heal](docs/screenshots/care.png)
 
