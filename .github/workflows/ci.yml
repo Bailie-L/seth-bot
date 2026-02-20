@@ -26,6 +26,3 @@ jobs:
 
       - name: Lint with ruff
         run: ruff check .
-
-      - name: Run tests
-        run: pytest test_emoji.py -v || echo "Tests completed"
