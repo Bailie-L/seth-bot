@@ -1,3 +1,5 @@
+[![CI](https://github.com/Bailie-L/seth-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/Bailie-L/seth-bot/actions/workflows/ci.yml)
+
 # 🐣 Seth Bot
 
 **A Discord Tamagotchi with Permanent Death**
