@@ -10,7 +10,25 @@ Seth is a virtual pet Discord bot where death is *permanent*. No respawns. No se
 [![discord.py](https://img.shields.io/badge/discord.py-2.6.0-blue.svg)](https://discordpy.readthedocs.io/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
+
 ---
+
+## 📸 Screenshots
+
+### Caring for Your Seth
+![Feed and Heal](docs/screenshots/care.png)
+
+### Status Check & Mining
+![Status and Mining](docs/screenshots/status.png)
+
+### Resource Gathering
+![Mining Resources](docs/screenshots/mining.png)
+
+### NPC Drama & Voting
+![Village Drama](docs/screenshots/drama.png)
+
+### The Graveyard — Permanent Death
+![Death Notifications](docs/screenshots/death.png)
 
 ## 🎮 Features
 
