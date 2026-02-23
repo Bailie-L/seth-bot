@@ -6,6 +6,7 @@ from discord.ext import commands
 import aiosqlite
 import config
 import asyncio
+from config import MAX_TRADE_AMOUNT, TRADE_TIMEOUT
 from utils.formatting import SethVisuals
 
 class Trading(commands.Cog):
@@ -92,8 +93,8 @@ class Trading(commands.Cog):
             await ctx.send("❌ Amount must be positive!")
             return
 
-        if amount > 100:
-            await ctx.send("❌ That's too much! Trade max 100 at a time.")
+        if amount > MAX_TRADE_AMOUNT:
+            await ctx.send(f"❌ That's too much! Trade max {MAX_TRADE_AMOUNT} at a time.")
             return
 
         # Check if users have Seths and resources
@@ -183,7 +184,7 @@ class Trading(commands.Cog):
             value=f"{member.name}'s **{target_seth[0]}**",
             inline=True
         )
-        embed.set_footer(text=f"{member.name}, react ✅ to accept or ❌ to decline (30s)")
+        embed.set_footer(text=f"{member.name}, react ✅ to accept or ❌ to decline ({int(TRADE_TIMEOUT)}s)")
 
         msg = await ctx.send(embed=embed)
         await msg.add_reaction('✅')
@@ -196,7 +197,7 @@ class Trading(commands.Cog):
                    str(reaction.emoji) in ['✅', '❌'])
 
         try:
-            reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+            reaction, user = await self.bot.wait_for('reaction_add', timeout=TRADE_TIMEOUT, check=check)
 
             if str(reaction.emoji) == '✅':
                 # Execute trade
@@ -233,7 +234,7 @@ class Trading(commands.Cog):
                 await ctx.send(f"❌ **Trade Declined!** {member.name} rejected the offer.")
 
         except asyncio.TimeoutError:
-            await ctx.send("⏰ **Trade Expired!** The offer timed out after 30 seconds.")
+            await ctx.send(f"⏰ **Trade Expired!** The offer timed out after {int(TRADE_TIMEOUT)} seconds.")
         finally:
             # Clean up pending trade
             if trade_id in self.pending_trades:

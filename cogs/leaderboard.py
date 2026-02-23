@@ -6,6 +6,7 @@ from discord.ext import commands
 import aiosqlite
 import config
 from datetime import datetime, timedelta
+from config import SECONDS_PER_HOUR, SECONDS_PER_DAY
 from utils.formatting import SethVisuals
 
 class Leaderboard(commands.Cog):
@@ -67,14 +68,14 @@ class Leaderboard(commands.Cog):
                 username = user.name if user else "Unknown"
 
                 # Format time display
-                if lifespan_seconds < 3600:  # Less than 1 hour
+                if lifespan_seconds < SECONDS_PER_HOUR:
                     minutes = int(lifespan_seconds / 60)
                     time_display = f"{minutes} minutes"
-                elif lifespan_seconds < 86400:  # Less than 1 day
-                    hours = round(lifespan_seconds / 3600, 1)
+                elif lifespan_seconds < SECONDS_PER_DAY:
+                    hours = round(lifespan_seconds / SECONDS_PER_HOUR, 1)
                     time_display = f"{hours} hours"
                 else:
-                    days = round(lifespan_seconds / 86400, 1)
+                    days = round(lifespan_seconds / SECONDS_PER_DAY, 1)
                     time_display = f"{days} days"
 
                 # Create visual bar showing relative lifespan

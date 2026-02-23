@@ -1,4 +1,11 @@
 """Pure helper functions for Seth status calculations"""
+from config import (
+    HEALTH_EXCELLENT_THRESHOLD, HEALTH_GOOD_THRESHOLD,
+    HEALTH_FAIR_THRESHOLD, HEALTH_POOR_THRESHOLD,
+    HUNGER_SATISFIED_THRESHOLD, HUNGER_PECKISH_THRESHOLD,
+    HUNGER_HUNGRY_THRESHOLD, HUNGER_STARVING_THRESHOLD,
+    HEALTH_COLOR_GREEN_THRESHOLD, HEALTH_COLOR_RED_THRESHOLD,
+)
 
 # Color values matching discord.Color presets
 COLOR_GREEN = 0x2ecc71
@@ -8,13 +15,13 @@ COLOR_RED = 0xe74c3c
 
 def get_health_status(health):
     """Get status text for health value"""
-    if health >= 80:
+    if health >= HEALTH_EXCELLENT_THRESHOLD:
         return "EXCELLENT"
-    elif health >= 60:
+    elif health >= HEALTH_GOOD_THRESHOLD:
         return "GOOD"
-    elif health >= 40:
+    elif health >= HEALTH_FAIR_THRESHOLD:
         return "FAIR"
-    elif health >= 20:
+    elif health >= HEALTH_POOR_THRESHOLD:
         return "POOR"
     else:
         return "CRITICAL"
@@ -22,13 +29,13 @@ def get_health_status(health):
 
 def get_hunger_status(hunger):
     """Get status text for hunger value"""
-    if hunger <= 20:
+    if hunger <= HUNGER_SATISFIED_THRESHOLD:
         return "SATISFIED"
-    elif hunger <= 40:
+    elif hunger <= HUNGER_PECKISH_THRESHOLD:
         return "PECKISH"
-    elif hunger <= 60:
+    elif hunger <= HUNGER_HUNGRY_THRESHOLD:
         return "HUNGRY"
-    elif hunger <= 80:
+    elif hunger <= HUNGER_STARVING_THRESHOLD:
         return "STARVING"
     else:
         return "DESPERATE"
@@ -36,9 +43,9 @@ def get_hunger_status(hunger):
 
 def get_health_color(health):
     """Get embed color int based on health"""
-    if health > 70:
+    if health > HEALTH_COLOR_GREEN_THRESHOLD:
         return COLOR_GREEN
-    elif health > 30:
+    elif health > HEALTH_COLOR_RED_THRESHOLD:
         return COLOR_YELLOW
     else:
         return COLOR_RED

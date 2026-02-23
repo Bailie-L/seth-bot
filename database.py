@@ -4,8 +4,7 @@ Handles all database operations with aiosqlite
 """
 import aiosqlite
 import os
-
-DATABASE_PATH = 'data/seth.db'
+from config import DATABASE_PATH, DEFAULT_RELATIONSHIP_SCORE
 
 async def init_db():
     """Initialize database with all required tables"""

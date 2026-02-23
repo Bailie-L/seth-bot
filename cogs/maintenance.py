@@ -5,6 +5,12 @@ import discord
 from discord.ext import commands
 import aiosqlite
 import config
+from config import (
+    FEED_HUNGER_REDUCTION, HEAL_HEALTH_RESTORATION,
+    TEST_DAMAGE_HEALTH, TEST_DAMAGE_HUNGER,
+    MAX_HEALTH, MIN_HEALTH, MAX_HUNGER,
+    HEALTH_CRITICAL_MAINT, HUNGER_STARVING_MAINT,
+)
 from utils.formatting import SethVisuals
 
 class Maintenance(commands.Cog):
@@ -53,7 +59,7 @@ class Maintenance(commands.Cog):
                 return
 
             # Feed the Seth
-            new_hunger = max(0, hunger - 30)  # Reduce hunger by 30
+            new_hunger = max(0, hunger - FEED_HUNGER_REDUCTION)
 
             await db.execute(
                 "UPDATE seths SET hunger = ? WHERE seth_id = ?",
@@ -110,7 +116,7 @@ class Maintenance(commands.Cog):
                 await ctx.send(embed=embed)
                 return
 
-            if health == 100:
+            if health == MAX_HEALTH:
                 embed = discord.Embed(
                     title="💪 Full Health",
                     description=f"{name} is already at full health!",
@@ -120,7 +126,7 @@ class Maintenance(commands.Cog):
                 return
 
             # Heal the Seth
-            new_health = min(100, health + 25)  # Increase health by 25
+            new_health = min(MAX_HEALTH, health + HEAL_HEALTH_RESTORATION)
 
             await db.execute(
                 "UPDATE seths SET health = ? WHERE seth_id = ?",
@@ -133,7 +139,7 @@ class Maintenance(commands.Cog):
             await db.commit()
 
             # Use standardized health display
-            health_display = SethVisuals.health_bar(new_health, 100)
+            health_display = SethVisuals.health_bar(new_health, MAX_HEALTH)
 
             embed = discord.Embed(
                 title="💊 Healed Seth!",
@@ -164,9 +170,9 @@ class Maintenance(commands.Cog):
 
             seth_id, name, current_health, current_hunger = seth
 
-            # Apply cumulative damage: -20 health, +20 hunger
-            new_health = max(0, current_health - 20)  # Can't go below 0
-            new_hunger = min(100, current_hunger + 20)  # Can't go above 100
+            # Apply cumulative damage
+            new_health = max(MIN_HEALTH, current_health - TEST_DAMAGE_HEALTH)
+            new_hunger = min(MAX_HUNGER, current_hunger + TEST_DAMAGE_HUNGER)
 
             # Update Seth with new damage values
             await db.execute(
@@ -176,7 +182,7 @@ class Maintenance(commands.Cog):
             await db.commit()
 
             # Use standardized displays for damage report
-            health_display = SethVisuals.health_bar(new_health, 100)
+            health_display = SethVisuals.health_bar(new_health, MAX_HEALTH)
             hunger_display = SethVisuals.hunger_bar(new_hunger)
 
             embed = discord.Embed(
@@ -186,16 +192,16 @@ class Maintenance(commands.Cog):
             )
             embed.add_field(name="❤️ Health", value=health_display, inline=False)
             embed.add_field(name="🍖 Stomach", value=hunger_display, inline=False)
-            embed.add_field(name="Damage Dealt", value="-20 health, +20 hunger", inline=False)
+            embed.add_field(name="Damage Dealt", value=f"-{TEST_DAMAGE_HEALTH} health, +{TEST_DAMAGE_HUNGER} hunger", inline=False)
 
             # Add warning if Seth is in critical condition
-            if new_health <= 20:
+            if new_health <= HEALTH_CRITICAL_MAINT:
                 embed.add_field(
                     name="⚠️ CRITICAL",
                     value="Seth is dying! Use !heal immediately!",
                     inline=False
                 )
-            elif new_hunger >= 80:
+            elif new_hunger >= HUNGER_STARVING_MAINT:
                 embed.add_field(
                     name="⚠️ STARVING",
                     value="Seth is starving! Use !feed immediately!",

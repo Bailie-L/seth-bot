@@ -8,6 +8,15 @@ import config
 import random
 from datetime import datetime
 import asyncio
+from config import (
+    MAX_RELATIONSHIP, MIN_RELATIONSHIP, DEFAULT_RELATIONSHIP_SCORE,
+    DRAMA_VOTE_DURATION, ROMANCE_DRAMA_CHANCE, CONFLICT_DRAMA_CHANCE,
+    FIGHT_OUTCOME_CHANCE,
+    LOVERS_THRESHOLD, FRIENDS_THRESHOLD, NEUTRAL_THRESHOLD, RIVALS_THRESHOLD,
+    RECONCILE_BONUS, BREAKUP_PENALTY, FIGHT_PENALTY,
+    FORGIVE_BONUS, JUSTICE_PENALTY, DRAMA_SPREAD_PENALTY,
+    SUPPORT_BONUS, OPPOSE_PENALTY, ALLIANCE_BONUS, SCANDAL_PENALTY,
+)
 from utils.formatting import SethVisuals
 
 class DramaV2(commands.Cog):
@@ -77,23 +86,23 @@ class DramaV2(commands.Cog):
                 WHERE (npc1 = ? AND npc2 = ?) OR (npc1 = ? AND npc2 = ?)
             ''', (npc1, npc2, npc2, npc1))
             row = await cursor.fetchone()
-            return row if row else (50, 'neutral')
+            return row if row else (DEFAULT_RELATIONSHIP_SCORE, 'neutral')
 
     async def update_relationship(self, npc1, npc2, change, event_type=None):
         """Update relationship between NPCs"""
         async with aiosqlite.connect(self.db_path) as db:
             # Get current score
             score, _ = await self.get_relationship(npc1, npc2)
-            new_score = max(0, min(100, score + change))
+            new_score = max(MIN_RELATIONSHIP, min(MAX_RELATIONSHIP, score + change))
 
             # Determine relationship type based on score
-            if new_score >= 80:
+            if new_score >= LOVERS_THRESHOLD:
                 rel_type = 'lovers'
-            elif new_score >= 60:
+            elif new_score >= FRIENDS_THRESHOLD:
                 rel_type = 'friends'
-            elif new_score >= 40:
+            elif new_score >= NEUTRAL_THRESHOLD:
                 rel_type = 'neutral'
-            elif new_score >= 20:
+            elif new_score >= RIVALS_THRESHOLD:
                 rel_type = 'rivals'
             else:
                 rel_type = 'enemies'
@@ -153,7 +162,7 @@ class DramaV2(commands.Cog):
 
         # Generate event based on current state
         event_type = None
-        if lovers and random.random() < 0.4:
+        if lovers and random.random() < ROMANCE_DRAMA_CHANCE:
             # Romance drama
             couple = random.choice(lovers)
             if enemies:
@@ -174,7 +183,7 @@ class DramaV2(commands.Cog):
                 description = template.format(npc1=couple[0], npc2=couple[1])
                 return event_type, description, couple[0], couple[1], None
 
-        elif enemies and random.random() < 0.5:
+        elif enemies and random.random() < CONFLICT_DRAMA_CHANCE:
             # Conflict drama
             rivals = random.choice(enemies)
             event_type = random.choice(['betrayal', 'scandal'])
@@ -259,8 +268,8 @@ class DramaV2(commands.Cog):
             embed.add_field(
                 name="🗳️ **VOTE: How should this resolve?**",
                 value=(
-                    "1️⃣ They should work it out (relationship +20)\n"
-                    "2️⃣ Time for a breakup (relationship -30)\n"
+                    f"1️⃣ They should work it out (relationship +{RECONCILE_BONUS})\n"
+                    f"2️⃣ Time for a breakup (relationship {BREAKUP_PENALTY})\n"
                     "3️⃣ Let them fight it out (random outcome)"
                 ),
                 inline=False
@@ -271,7 +280,7 @@ class DramaV2(commands.Cog):
             embed.add_field(
                 name="🗳️ **VOTE: What happens next?**",
                 value=(
-                    "1️⃣ Forgive and forget (relationship +10)\n"
+                    f"1️⃣ Forgive and forget (relationship +{FORGIVE_BONUS})\n"
                     "2️⃣ Demand justice (become rivals)\n"
                     "3️⃣ Spread the drama (affects everyone)"
                 ),
@@ -316,8 +325,8 @@ class DramaV2(commands.Cog):
             'options': options
         }
 
-        # Wait 3 minutes for votes (shorter for testing)
-        await asyncio.sleep(180)
+        # Wait for votes
+        await asyncio.sleep(DRAMA_VOTE_DURATION)
         await self.resolve_drama()
 
     async def resolve_drama(self):
@@ -355,13 +364,13 @@ class DramaV2(commands.Cog):
         # Process based on event type
         if self.active_drama['event_type'] == 'romance_conflict':
             if winner_index == 0:  # Work it out
-                await self.update_relationship(npc1, npc2, 20, 'reconciled')
+                await self.update_relationship(npc1, npc2, RECONCILE_BONUS, 'reconciled')
                 if not outcome:
                     outcome = f"💕 {npc1} and {npc2} made up! Love wins!"
                 else:
                     outcome += f"\n💕 Fate brings {npc1} and {npc2} together!"
             elif winner_index == 1:  # Breakup
-                await self.update_relationship(npc1, npc2, -30, 'broke_up')
+                await self.update_relationship(npc1, npc2, BREAKUP_PENALTY, 'broke_up')
                 await self.update_npc_state(npc1, dating=None)
                 await self.update_npc_state(npc2, dating=None)
                 if not outcome:
@@ -369,11 +378,11 @@ class DramaV2(commands.Cog):
                 else:
                     outcome += f"\n💔 Fate tears {npc1} and {npc2} apart!"
             else:  # Fight
-                if random.random() < 0.5:
+                if random.random() < FIGHT_OUTCOME_CHANCE:
                     outcome_text = f"⚔️ {npc1} won the fight but lost {npc2}'s respect!"
                 else:
                     outcome_text = f"⚔️ {npc2} stood their ground! {npc1} storms off!"
-                await self.update_relationship(npc1, npc2, -20, 'fought')
+                await self.update_relationship(npc1, npc2, FIGHT_PENALTY, 'fought')
                 if not outcome:
                     outcome = outcome_text
                 else:
@@ -381,13 +390,13 @@ class DramaV2(commands.Cog):
 
         elif self.active_drama['event_type'] in ['betrayal', 'scandal']:
             if winner_index == 0:  # Forgive
-                await self.update_relationship(npc1, npc2, 10, 'forgiven')
+                await self.update_relationship(npc1, npc2, FORGIVE_BONUS, 'forgiven')
                 if not outcome:
                     outcome = f"🤝 Forgiveness prevails! {npc1} and {npc2} move forward."
                 else:
                     outcome += "\n🤝 Fate grants forgiveness!"
             elif winner_index == 1:  # Justice
-                await self.update_relationship(npc1, npc2, -40, 'rivals')
+                await self.update_relationship(npc1, npc2, JUSTICE_PENALTY, 'rivals')
                 await self.update_npc_state(npc1, rival=npc2)
                 await self.update_npc_state(npc2, rival=npc1)
                 if not outcome:
@@ -398,7 +407,7 @@ class DramaV2(commands.Cog):
                 # Affect random other NPCs
                 for npc in random.sample(list(self.npcs.keys()), 2):
                     if npc not in [npc1, npc2]:
-                        await self.update_relationship(npc1, npc, -10, 'drama_spread')
+                        await self.update_relationship(npc1, npc, DRAMA_SPREAD_PENALTY, 'drama_spread')
                 if not outcome:
                     outcome = "🔥 The drama spreads! The whole village is talking!"
                 else:
@@ -406,13 +415,13 @@ class DramaV2(commands.Cog):
 
         else:  # Mystery/Alliance
             if winner_index == 0:  # Support
-                await self.update_relationship(npc1, npc2, 15, 'supported')
+                await self.update_relationship(npc1, npc2, SUPPORT_BONUS, 'supported')
                 if not outcome:
                     outcome = f"👍 The village supports this! {npc1} and {npc2} grow closer."
                 else:
                     outcome += "\n👍 Fate smiles upon them!"
             elif winner_index == 1:  # Oppose
-                await self.update_relationship(npc1, npc2, -15, 'opposed')
+                await self.update_relationship(npc1, npc2, OPPOSE_PENALTY, 'opposed')
                 if not outcome:
                     outcome = f"👎 The village opposes! {npc1} and {npc2} drift apart."
                 else:
@@ -439,10 +448,10 @@ class DramaV2(commands.Cog):
 
         # Show relationship changes with visual bar
         new_score, new_type = await self.get_relationship(npc1, npc2)
-        relationship_bar = SethVisuals.resource_bar(new_score, 100)
+        relationship_bar = SethVisuals.resource_bar(new_score, MAX_RELATIONSHIP)
         embed.add_field(
             name="Relationship Update",
-            value=f"{npc1} ↔️ {npc2}\n{relationship_bar}\n**{new_type.title()}** ({new_score}/100)",
+            value=f"{npc1} ↔️ {npc2}\n{relationship_bar}\n**{new_type.title()}** ({new_score}/{MAX_RELATIONSHIP})",
             inline=False
         )
 
@@ -474,9 +483,9 @@ class DramaV2(commands.Cog):
 
         # Update relationships based on event
         if event_type in ['romance_start', 'alliance']:
-            await self.update_relationship(npc1, npc2, 15, event_type)
+            await self.update_relationship(npc1, npc2, ALLIANCE_BONUS, event_type)
         elif event_type in ['betrayal', 'scandal']:
-            await self.update_relationship(npc1, npc2, -20, event_type)
+            await self.update_relationship(npc1, npc2, SCANDAL_PENALTY, event_type)
 
     @commands.command(name='relationships')
     async def show_relationships(self, ctx):
@@ -505,7 +514,7 @@ class DramaV2(commands.Cog):
 
         for npc1, npc2, rel_type, score in relationships:
             # Use visual bar for relationship score
-            rel_bar = SethVisuals.resource_bar(score, 100)
+            rel_bar = SethVisuals.resource_bar(score, MAX_RELATIONSHIP)
             rel_str = f"{npc1} ↔️ {npc2}\n{rel_bar}"
 
             if rel_type == 'lovers':
@@ -593,7 +602,7 @@ class DramaV2(commands.Cog):
                 emoji = {'lovers': '💕', 'friends': '🤝', 'neutral': '😐',
                         'rivals': '⚔️', 'enemies': '😠'}.get(rel_type, '❓')
                 # Use visual bar for individual relationships
-                rel_bar = SethVisuals.resource_bar(score, 100)
+                rel_bar = SethVisuals.resource_bar(score, MAX_RELATIONSHIP)
                 rel_strs.append(f"{emoji} **{other}** - {rel_type.title()}\n{rel_bar}")
 
             embed.add_field(

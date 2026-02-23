@@ -6,6 +6,11 @@ from discord.ext import commands
 import aiosqlite
 import config
 from datetime import datetime
+from config import (
+    HEALTH_GOOD_DISPLAY, HEALTH_POOR_DISPLAY,
+    HUNGER_STARVING_DISPLAY, HUNGER_HUNGRY_DISPLAY,
+    GENERATION_SCORE_WEIGHT, AGE_SCORE_DIVISOR,
+)
 
 class Public(commands.Cog):
     def __init__(self, bot):
@@ -41,17 +46,17 @@ class Public(commands.Cog):
                 age_minutes = int((datetime.now() - birth).total_seconds() / 60)
 
                 # Health status emoji
-                if health > 75:
+                if health > HEALTH_GOOD_DISPLAY:
                     status = "💚"
-                elif health > 25:
+                elif health > HEALTH_POOR_DISPLAY:
                     status = "💛"
                 else:
                     status = "💔"
 
                 # Hunger status
-                if hunger > 80:
+                if hunger > HUNGER_STARVING_DISPLAY:
                     hunger_status = "🔴 Starving!"
-                elif hunger > 50:
+                elif hunger > HUNGER_HUNGRY_DISPLAY:
                     hunger_status = "🟡 Hungry"
                 else:
                     hunger_status = "🟢 Fed"
@@ -134,8 +139,8 @@ class Public(commands.Cog):
             t_age = int((datetime.now() - datetime.fromisoformat(t_birth)).total_seconds() / 60)
 
             # Determine winner
-            a_score = a_health + (100 - a_hunger) + (a_gen * 10) + (a_age // 10)
-            t_score = t_health + (100 - t_hunger) + (t_gen * 10) + (t_age // 10)
+            a_score = a_health + (100 - a_hunger) + (a_gen * GENERATION_SCORE_WEIGHT) + (a_age // AGE_SCORE_DIVISOR)
+            t_score = t_health + (100 - t_hunger) + (t_gen * GENERATION_SCORE_WEIGHT) + (t_age // AGE_SCORE_DIVISOR)
 
             if a_score > t_score:
                 winner = f"🏆 {ctx.author.name}'s {a_name} is superior!"

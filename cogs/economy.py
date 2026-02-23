@@ -7,6 +7,11 @@ import aiosqlite
 from datetime import datetime, timedelta
 import random
 import config
+from config import (
+    FOOD_MINE_MIN, FOOD_MINE_MAX,
+    MEDICINE_MINE_MIN, MEDICINE_MINE_MAX,
+    COAL_MINE_MIN, COAL_MINE_MAX,
+)
 
 class Economy(commands.Cog):
     def __init__(self, bot):
@@ -27,14 +32,14 @@ class Economy(commands.Cog):
         # Check if user has Premium role
         premium_role = discord.utils.get(ctx.guild.roles, name="Premium")
         is_premium = premium_role in ctx.author.roles if premium_role else False
-        cooldown_seconds = 30 if is_premium else 60
+        cooldown_seconds = config.PREMIUM_MINE_COOLDOWN if is_premium else config.MINE_COOLDOWN
 
         # Check cooldown
         if user_id in self.cooldowns:
             time_diff = datetime.now() - self.cooldowns[user_id]
             if time_diff < timedelta(seconds=cooldown_seconds):
                 remaining = cooldown_seconds - int(time_diff.total_seconds())
-                premium_msg = f" {self.star_emoji} (Premium: 30s cooldown)" if is_premium else ""
+                premium_msg = f" {self.star_emoji} (Premium: {config.PREMIUM_MINE_COOLDOWN}s cooldown)" if is_premium else ""
                 await ctx.send(f"⏳ **Mining Cooldown**\nYou must wait **{remaining} seconds** before mining again!{premium_msg}")
                 return
 
@@ -53,9 +58,9 @@ class Economy(commands.Cog):
             seth_name = seth[0]
 
             # Mine resources
-            food = random.randint(0, 2)
-            medicine = random.randint(0, 1)
-            coal = random.randint(1, 5)
+            food = random.randint(FOOD_MINE_MIN, FOOD_MINE_MAX)
+            medicine = random.randint(MEDICINE_MINE_MIN, MEDICINE_MINE_MAX)
+            coal = random.randint(COAL_MINE_MIN, COAL_MINE_MAX)
 
             # Update resources
             await db.execute(

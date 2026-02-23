@@ -6,6 +6,13 @@ from discord.ext import commands, tasks
 import aiosqlite
 from datetime import datetime
 import config
+from config import (
+    DECAY_INTERVAL, HUNGER_PER_CYCLE, NATURAL_DECAY,
+    SEVERE_HUNGER_THRESHOLD, SEVERE_HUNGER_DAMAGE,
+    MODERATE_HUNGER_THRESHOLD, MODERATE_HUNGER_DAMAGE,
+    MAX_HUNGER, MIN_HEALTH, MAX_HEALTH,
+    HEALTH_CRITICAL_WARNING, HUNGER_CRITICAL_WARNING,
+)
 from utils.formatting import SethVisuals
 
 class Decay(commands.Cog):
@@ -18,7 +25,7 @@ class Decay(commands.Cog):
     def cog_unload(self):
         self.decay_task.cancel()
 
-    @tasks.loop(seconds=120)  # Run every 120 seconds (doubled from 60)
+    @tasks.loop(seconds=DECAY_INTERVAL)
     async def decay_task(self):
         """Automatic decay - hunger increases, health decreases"""
         async with aiosqlite.connect(self.db_path) as db:
@@ -36,16 +43,16 @@ class Decay(commands.Cog):
                 seth_id, user_id, name, health, hunger, generation = seth
 
                 # Increase hunger
-                new_hunger = min(100, hunger + 5)  # +5 hunger per cycle
+                new_hunger = min(MAX_HUNGER, hunger + HUNGER_PER_CYCLE)
 
                 # Decrease health if hungry
                 health_loss = 0
-                if new_hunger >= 80:
-                    health_loss = 3  # Severe hunger
-                elif new_hunger >= 50:
-                    health_loss = 1   # Moderate hunger
+                if new_hunger >= SEVERE_HUNGER_THRESHOLD:
+                    health_loss = SEVERE_HUNGER_DAMAGE
+                elif new_hunger >= MODERATE_HUNGER_THRESHOLD:
+                    health_loss = MODERATE_HUNGER_DAMAGE
 
-                new_health = max(0, health - health_loss - 1)  # -1 natural decay
+                new_health = max(MIN_HEALTH, health - health_loss - NATURAL_DECAY)
 
                 # Update Seth
                 await db.execute(
@@ -54,12 +61,12 @@ class Decay(commands.Cog):
                 )
 
                 # FIXED: Calculate damage Seth will take NEXT cycle
-                next_hunger = min(100, new_hunger + 5)  # What hunger will be next cycle
-                next_cycle_damage = 1  # Base natural decay
-                if next_hunger >= 80:
-                    next_cycle_damage += 3  # Will have severe hunger damage
-                elif next_hunger >= 50:
-                    next_cycle_damage += 1  # Will have moderate hunger damage
+                next_hunger = min(MAX_HUNGER, new_hunger + HUNGER_PER_CYCLE)
+                next_cycle_damage = NATURAL_DECAY
+                if next_hunger >= SEVERE_HUNGER_THRESHOLD:
+                    next_cycle_damage += SEVERE_HUNGER_DAMAGE
+                elif next_hunger >= MODERATE_HUNGER_THRESHOLD:
+                    next_cycle_damage += MODERATE_HUNGER_DAMAGE
 
                 # Warn if Seth will die in the NEXT cycle (not just at 1-2 health)
                 if new_health > 0 and new_health <= next_cycle_damage and seth_id not in self.warned_seths:
@@ -71,8 +78,8 @@ class Decay(commands.Cog):
                     self.warned_seths.discard(seth_id)
 
                 # Check for death
-                if new_health <= 0:
-                    death_reason = "Starvation" if new_hunger >= 80 else "Natural causes"
+                if new_health <= MIN_HEALTH:
+                    death_reason = "Starvation" if new_hunger >= SEVERE_HUNGER_THRESHOLD else "Natural causes"
                     death_time = datetime.utcnow()
 
                     # Kill the Seth
@@ -122,12 +129,12 @@ class Decay(commands.Cog):
                             user = self.bot.get_user(user_id)
 
                             # Use standardized visual bars
-                            health_display = SethVisuals.health_bar(health, 100)
+                            health_display = SethVisuals.health_bar(health, MAX_HEALTH)
                             hunger_display = SethVisuals.hunger_bar(hunger)
 
                             # Determine death cause and begging message
-                            health_critical = health <= 10
-                            hunger_critical = hunger >= 70
+                            health_critical = health <= HEALTH_CRITICAL_WARNING
+                            hunger_critical = hunger >= HUNGER_CRITICAL_WARNING
 
                             # Dynamic begging based on what's killing Seth
                             if health_critical and hunger_critical:
@@ -157,9 +164,9 @@ class Decay(commands.Cog):
 
                             # Determine what commands are needed
                             commands_needed = []
-                            if health <= 10:
+                            if health <= HEALTH_CRITICAL_WARNING:
                                 commands_needed.append("`!heal` for health")
-                            if hunger >= 70:
+                            if hunger >= HUNGER_CRITICAL_WARNING:
                                 commands_needed.append("`!feed` for hunger")
 
                             warning_embed.add_field(

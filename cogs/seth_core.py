@@ -6,6 +6,11 @@ from discord.ext import commands
 import aiosqlite
 from datetime import datetime
 import config
+from config import (
+    MAX_HEALTH,
+    HEALTH_CRITICAL_STATUS, HUNGER_CRITICAL_STATUS,
+    HEALTH_WARNING_STATUS, HUNGER_WARNING_STATUS,
+)
 from utils.formatting import SethVisuals
 from utils.status import get_health_status, get_hunger_status, get_health_color
 
@@ -77,7 +82,7 @@ class SethCore(commands.Cog):
             )
 
             # Use standardized visual bars
-            health_display = SethVisuals.health_bar(config.STARTING_HEALTH, 100)
+            health_display = SethVisuals.health_bar(config.STARTING_HEALTH, MAX_HEALTH)
             hunger_display = SethVisuals.hunger_bar(config.STARTING_HUNGER)
 
             embed.add_field(name="❤️ Health", value=health_display, inline=False)
@@ -117,7 +122,7 @@ class SethCore(commands.Cog):
             hunger_status = get_hunger_status(hunger)
 
             # Use standardized visual bars
-            health_display = SethVisuals.health_bar(health, 100)
+            health_display = SethVisuals.health_bar(health, MAX_HEALTH)
             hunger_display = SethVisuals.hunger_bar(hunger)
 
             # Calculate age
@@ -148,34 +153,34 @@ class SethCore(commands.Cog):
             embed.add_field(name="📅 Age", value=f"{age} days", inline=True)
 
             # Critical warning messages with clear instructions
-            if health < 20 or hunger > 80:
+            if health < HEALTH_CRITICAL_STATUS or hunger > HUNGER_CRITICAL_STATUS:
                 embed.add_field(
                     name="🚨 **CRITICAL WARNING** 🚨",
                     value="**Wake up ass-hole, I'm starving!!! Feed me now!**",
                     inline=False
                 )
                 # Add specific action needed based on what's critical
-                if health < 20 and hunger > 80:
+                if health < HEALTH_CRITICAL_STATUS and hunger > HUNGER_CRITICAL_STATUS:
                     embed.add_field(
                         name="💀 BOTH CRITICAL",
                         value="Use `!heal` for health AND `!feed` for hunger NOW!",
                         inline=False
                     )
-                elif hunger > 80:
+                elif hunger > HUNGER_CRITICAL_STATUS:
                     embed.add_field(
                         name="💀 ACTION REQUIRED",
                         value="Use `!feed` immediately to reduce hunger!",
                         inline=False
                     )
-                elif health < 20:
+                elif health < HEALTH_CRITICAL_STATUS:
                     embed.add_field(
                         name="💀 ACTION REQUIRED",
                         value="Use `!heal` immediately to increase health!",
                         inline=False
                     )
-            elif health < 40:
+            elif health < HEALTH_WARNING_STATUS:
                 embed.add_field(name="⚠️ WARNING", value="Seth's health is getting low! Use `!heal`", inline=False)
-            elif hunger > 60:
+            elif hunger > HUNGER_WARNING_STATUS:
                 embed.add_field(name="⚠️ WARNING", value="Seth is getting hungry! Use `!feed`", inline=False)
 
             await ctx.send(embed=embed)
