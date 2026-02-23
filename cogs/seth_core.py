@@ -7,6 +7,7 @@ import aiosqlite
 from datetime import datetime
 import config
 from utils.formatting import SethVisuals
+from utils.status import get_health_status, get_hunger_status, get_health_color
 
 class SethCore(commands.Cog):
     def __init__(self, bot):
@@ -112,8 +113,8 @@ class SethCore(commands.Cog):
             name, gen, health, hunger, birth_time = seth
 
             # Get status text for health and hunger
-            health_status = self.get_health_status(health)
-            hunger_status = self.get_hunger_status(hunger)
+            health_status = get_health_status(health)
+            hunger_status = get_hunger_status(hunger)
 
             # Use standardized visual bars
             health_display = SethVisuals.health_bar(health, 100)
@@ -126,7 +127,7 @@ class SethCore(commands.Cog):
             # Status embed
             embed = discord.Embed(
                 title=f"📊 {name} Status",
-                color=self.get_health_color(health)
+                color=get_health_color(health)
             )
 
             # Standardized health display
@@ -252,41 +253,6 @@ class SethCore(commands.Cog):
             embed.set_footer(text=f"Use {config.BOT_PREFIX}start [name] to continue the bloodline")
 
             await ctx.send(embed=embed)
-
-    def get_health_status(self, health):
-        """Get status text for health value"""
-        if health >= 80:
-            return "EXCELLENT"
-        elif health >= 60:
-            return "GOOD"
-        elif health >= 40:
-            return "FAIR"
-        elif health >= 20:
-            return "POOR"
-        else:
-            return "CRITICAL"
-
-    def get_hunger_status(self, hunger):
-        """Get status text for hunger value"""
-        if hunger <= 20:
-            return "SATISFIED"
-        elif hunger <= 40:
-            return "PECKISH"
-        elif hunger <= 60:
-            return "HUNGRY"
-        elif hunger <= 80:
-            return "STARVING"
-        else:
-            return "DESPERATE"
-
-    def get_health_color(self, health):
-        """Get color based on health"""
-        if health > 70:
-            return discord.Color.green()
-        elif health > 30:
-            return discord.Color.yellow()
-        else:
-            return discord.Color.red()
 
 async def setup(bot):
     await bot.add_cog(SethCore(bot))
