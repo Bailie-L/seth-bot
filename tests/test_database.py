@@ -1,7 +1,6 @@
 """Tests for database.py — uses temporary in-memory DB"""
 import pytest
 import aiosqlite
-import os
 
 # Patch DATABASE_PATH before importing database module
 import database
