@@ -4,7 +4,7 @@ Handles all database operations with aiosqlite
 """
 import aiosqlite
 import os
-from config import DATABASE_PATH, DEFAULT_RELATIONSHIP_SCORE
+from config import DATABASE_PATH
 
 async def init_db() -> None:
     """Initialize database with all required tables"""
