@@ -13,7 +13,7 @@ COLOR_YELLOW = 0xf1c40f
 COLOR_RED = 0xe74c3c
 
 
-def get_health_status(health):
+def get_health_status(health: int) -> str:
     """Get status text for health value"""
     if health >= HEALTH_EXCELLENT_THRESHOLD:
         return "EXCELLENT"
@@ -27,7 +27,7 @@ def get_health_status(health):
         return "CRITICAL"
 
 
-def get_hunger_status(hunger):
+def get_hunger_status(hunger: int) -> str:
     """Get status text for hunger value"""
     if hunger <= HUNGER_SATISFIED_THRESHOLD:
         return "SATISFIED"
@@ -41,7 +41,7 @@ def get_hunger_status(hunger):
         return "DESPERATE"
 
 
-def get_health_color(health):
+def get_health_color(health: int) -> int:
     """Get embed color int based on health"""
     if health > HEALTH_COLOR_GREEN_THRESHOLD:
         return COLOR_GREEN

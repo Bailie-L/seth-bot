@@ -10,13 +10,13 @@ from config import MAX_TRADE_AMOUNT, TRADE_TIMEOUT
 from utils.formatting import SethVisuals
 
 class Trading(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.db_path = config.DATABASE_PATH
-        self.pending_trades = {}  # Store pending trade offers
+        self.pending_trades: dict[str, dict] = {}
 
     @commands.command(name='trade')
-    async def trade(self, ctx, *, args=None):
+    async def trade(self, ctx: commands.Context, *, args: str | None = None) -> None:
         """Trade resources with another user"""
         if not args:
             embed = discord.Embed(
@@ -42,19 +42,16 @@ class Trading(commands.Cog):
             await ctx.send(embed=embed)
             return
 
-        # Parse arguments
         parts = args.split()
         if len(parts) < 3:
             await ctx.send("❌ Usage: `!trade @user [food/medicine/coal] [amount]`")
             return
 
-        # Get member from mentions or by name
         member = None
         if ctx.message.mentions:
             member = ctx.message.mentions[0]
             resource_index = 1
         else:
-            # Try to find member by name
             potential_name = parts[0].replace('@', '')
             member = discord.utils.get(ctx.guild.members, name=potential_name)
             if not member:
@@ -65,7 +62,6 @@ class Trading(commands.Cog):
             await ctx.send("❌ User not found! Make sure to @ mention them properly")
             return
 
-        # Get resource and amount
         try:
             resource = parts[resource_index].lower()
             amount = int(parts[resource_index + 1])
@@ -73,7 +69,6 @@ class Trading(commands.Cog):
             await ctx.send("❌ Usage: `!trade @user [food/medicine/coal] [amount]`")
             return
 
-        # Validation checks
         if member.id == ctx.author.id:
             await ctx.send("🤔 You can't trade with yourself!")
             return
@@ -82,7 +77,6 @@ class Trading(commands.Cog):
             await ctx.send("🤖 Bots don't have Seths! They can't trade.")
             return
 
-        # Validate resource type with safe column mapping
         safe_columns = {'food': 'food', 'medicine': 'medicine', 'coal': 'coal'}
         if resource not in safe_columns:
             await ctx.send("❌ Invalid resource! Choose: `food`, `medicine`, or `coal`")
@@ -97,9 +91,7 @@ class Trading(commands.Cog):
             await ctx.send(f"❌ That's too much! Trade max {MAX_TRADE_AMOUNT} at a time.")
             return
 
-        # Check if users have Seths and resources
         async with aiosqlite.connect(self.db_path) as db:
-            # Check author has Seth
             cursor = await db.execute(
                 "SELECT name FROM seths WHERE user_id = ? AND is_alive = 1",
                 (ctx.author.id,)
@@ -109,7 +101,6 @@ class Trading(commands.Cog):
                 await ctx.send("💀 You need a living Seth to trade!")
                 return
 
-            # Check target has Seth
             cursor = await db.execute(
                 "SELECT name FROM seths WHERE user_id = ? AND is_alive = 1",
                 (member.id,)
@@ -119,7 +110,6 @@ class Trading(commands.Cog):
                 await ctx.send(f"💀 {member.name} doesn't have a living Seth!")
                 return
 
-            # Check author has enough resources
             cursor = await db.execute(
                 f"SELECT {column} FROM resources WHERE user_id = ?",
                 (ctx.author.id,)
@@ -131,7 +121,6 @@ class Trading(commands.Cog):
 
             current_amount = result[0]
             if current_amount < amount:
-                # Use visual bar to show shortage
                 resource_display = SethVisuals.resource_bar(current_amount, amount, show_fraction=True)
                 embed = discord.Embed(
                     title="❌ Insufficient Resources",
@@ -146,7 +135,6 @@ class Trading(commands.Cog):
                 await ctx.send(embed=embed)
                 return
 
-        # Create trade offer
         trade_id = f"{ctx.author.id}:{member.id}:{ctx.message.id}"
         self.pending_trades[trade_id] = {
             'from': ctx.author,
@@ -156,42 +144,23 @@ class Trading(commands.Cog):
             'channel': ctx.channel
         }
 
-        # Resource emoji mapping
-        resource_emojis = {
-            'food': '🍖',
-            'medicine': '💊',
-            'coal': '⚫'
-        }
+        resource_emojis = {'food': '🍖', 'medicine': '💊', 'coal': '⚫'}
 
-        # Send trade offer with standardized display
         embed = discord.Embed(
             title="🤝 **Trade Offer**",
             description=f"{ctx.author.mention} wants to trade with {member.mention}!",
             color=0xf39c12
         )
-        embed.add_field(
-            name="From",
-            value=f"{ctx.author.name}'s **{author_seth[0]}**",
-            inline=True
-        )
-        embed.add_field(
-            name="Offering",
-            value=f"{resource_emojis.get(resource, '')} **{amount}** {resource.capitalize()}",
-            inline=True
-        )
-        embed.add_field(
-            name="To",
-            value=f"{member.name}'s **{target_seth[0]}**",
-            inline=True
-        )
+        embed.add_field(name="From", value=f"{ctx.author.name}'s **{author_seth[0]}**", inline=True)
+        embed.add_field(name="Offering", value=f"{resource_emojis.get(resource, '')} **{amount}** {resource.capitalize()}", inline=True)
+        embed.add_field(name="To", value=f"{member.name}'s **{target_seth[0]}**", inline=True)
         embed.set_footer(text=f"{member.name}, react ✅ to accept or ❌ to decline ({int(TRADE_TIMEOUT)}s)")
 
         msg = await ctx.send(embed=embed)
         await msg.add_reaction('✅')
         await msg.add_reaction('❌')
 
-        # Wait for response
-        def check(reaction, user):
+        def check(reaction: discord.Reaction, user: discord.User) -> bool:
             return (user.id == member.id and
                    reaction.message.id == msg.id and
                    str(reaction.emoji) in ['✅', '❌'])
@@ -200,14 +169,11 @@ class Trading(commands.Cog):
             reaction, user = await self.bot.wait_for('reaction_add', timeout=TRADE_TIMEOUT, check=check)
 
             if str(reaction.emoji) == '✅':
-                # Execute trade
                 async with aiosqlite.connect(self.db_path) as db:
-                    # Remove from sender
                     await db.execute(
                         f"UPDATE resources SET {column} = {column} - ? WHERE user_id = ?",
                         (amount, ctx.author.id)
                     )
-                    # Add to receiver
                     await db.execute(
                         f"UPDATE resources SET {column} = {column} + ? WHERE user_id = ?",
                         (amount, member.id)
@@ -236,9 +202,8 @@ class Trading(commands.Cog):
         except asyncio.TimeoutError:
             await ctx.send(f"⏰ **Trade Expired!** The offer timed out after {int(TRADE_TIMEOUT)} seconds.")
         finally:
-            # Clean up pending trade
             if trade_id in self.pending_trades:
                 del self.pending_trades[trade_id]
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Trading(bot))

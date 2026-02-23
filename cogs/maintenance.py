@@ -14,17 +14,16 @@ from config import (
 from utils.formatting import SethVisuals
 
 class Maintenance(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.db_path = config.DATABASE_PATH
 
     @commands.command(name='feed')
-    async def feed_seth(self, ctx):
+    async def feed_seth(self, ctx: commands.Context) -> None:
         """Feed your Seth to reduce hunger (costs 1 food)"""
         user_id = ctx.author.id
 
         async with aiosqlite.connect(self.db_path) as db:
-            # Get Seth and resources
             cursor = await db.execute(
                 """SELECT s.seth_id, s.name, s.hunger, r.food
                 FROM seths s
@@ -58,7 +57,6 @@ class Maintenance(commands.Cog):
                 await ctx.send(embed=embed)
                 return
 
-            # Feed the Seth
             new_hunger = max(0, hunger - FEED_HUNGER_REDUCTION)
 
             await db.execute(
@@ -71,7 +69,6 @@ class Maintenance(commands.Cog):
             )
             await db.commit()
 
-            # Use standardized hunger display
             hunger_display = SethVisuals.hunger_bar(new_hunger)
 
             embed = discord.Embed(
@@ -86,12 +83,11 @@ class Maintenance(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command(name='heal')
-    async def heal_seth(self, ctx):
+    async def heal_seth(self, ctx: commands.Context) -> None:
         """Heal your Seth to increase health (costs 1 medicine)"""
         user_id = ctx.author.id
 
         async with aiosqlite.connect(self.db_path) as db:
-            # Get Seth and resources
             cursor = await db.execute(
                 """SELECT s.seth_id, s.name, s.health, r.medicine
                 FROM seths s
@@ -125,7 +121,6 @@ class Maintenance(commands.Cog):
                 await ctx.send(embed=embed)
                 return
 
-            # Heal the Seth
             new_health = min(MAX_HEALTH, health + HEAL_HEALTH_RESTORATION)
 
             await db.execute(
@@ -138,7 +133,6 @@ class Maintenance(commands.Cog):
             )
             await db.commit()
 
-            # Use standardized health display
             health_display = SethVisuals.health_bar(new_health, MAX_HEALTH)
 
             embed = discord.Embed(
@@ -153,7 +147,7 @@ class Maintenance(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command(name='damage')
-    async def damage_test(self, ctx):
+    async def damage_test(self, ctx: commands.Context) -> None:
         """TEST COMMAND: Damage your Seth (cumulative damage for testing)"""
         user_id = ctx.author.id
 
@@ -170,18 +164,15 @@ class Maintenance(commands.Cog):
 
             seth_id, name, current_health, current_hunger = seth
 
-            # Apply cumulative damage
             new_health = max(MIN_HEALTH, current_health - TEST_DAMAGE_HEALTH)
             new_hunger = min(MAX_HUNGER, current_hunger + TEST_DAMAGE_HUNGER)
 
-            # Update Seth with new damage values
             await db.execute(
                 "UPDATE seths SET health = ?, hunger = ? WHERE seth_id = ?",
                 (new_health, new_hunger, seth_id)
             )
             await db.commit()
 
-            # Use standardized displays for damage report
             health_display = SethVisuals.health_bar(new_health, MAX_HEALTH)
             hunger_display = SethVisuals.hunger_bar(new_hunger)
 
@@ -194,7 +185,6 @@ class Maintenance(commands.Cog):
             embed.add_field(name="🍖 Stomach", value=hunger_display, inline=False)
             embed.add_field(name="Damage Dealt", value=f"-{TEST_DAMAGE_HEALTH} health, +{TEST_DAMAGE_HUNGER} hunger", inline=False)
 
-            # Add warning if Seth is in critical condition
             if new_health <= HEALTH_CRITICAL_MAINT:
                 embed.add_field(
                     name="⚠️ CRITICAL",
@@ -212,5 +202,5 @@ class Maintenance(commands.Cog):
 
             await ctx.send(embed=embed)
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Maintenance(bot))

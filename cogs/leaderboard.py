@@ -10,15 +10,14 @@ from config import SECONDS_PER_HOUR, SECONDS_PER_DAY
 from utils.formatting import SethVisuals
 
 class Leaderboard(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.db_path = config.DATABASE_PATH
 
     @commands.command(name='top')
-    async def top_seths(self, ctx):
+    async def top_seths(self, ctx: commands.Context) -> None:
         """Show longest living Seths"""
         async with aiosqlite.connect(self.db_path) as db:
-            # First check what columns exist
             cursor = await db.execute(
                 """SELECT name, generation, death_time, user_id
                 FROM graveyard
@@ -31,9 +30,8 @@ class Leaderboard(commands.Cog):
                 await ctx.send("📊 No Seths have died yet!")
                 return
 
-            # Now get birth times from seths table
             seths_with_times = []
-            max_lifespan = 0  # Track longest lifespan for relative bars
+            max_lifespan = 0
 
             for name, gen, death_time, user_id in top_dead:
                 cursor2 = await db.execute(
@@ -46,15 +44,12 @@ class Leaderboard(commands.Cog):
                 if birth_data:
                     birth_time = birth_data[0]
                 else:
-                    # Fallback: assume they lived 1 minute
                     birth_time = (datetime.fromisoformat(death_time) - timedelta(minutes=1)).isoformat()
 
-                # Calculate lifespan
                 lifespan_seconds = (datetime.fromisoformat(death_time) - datetime.fromisoformat(birth_time)).total_seconds()
                 max_lifespan = max(max_lifespan, lifespan_seconds)
                 seths_with_times.append((name, gen, birth_time, death_time, user_id, lifespan_seconds))
 
-            # Sort by lifespan
             seths_with_times.sort(key=lambda x: x[5], reverse=True)
 
             embed = discord.Embed(
@@ -67,7 +62,6 @@ class Leaderboard(commands.Cog):
                 user = self.bot.get_user(user_id)
                 username = user.name if user else "Unknown"
 
-                # Format time display
                 if lifespan_seconds < SECONDS_PER_HOUR:
                     minutes = int(lifespan_seconds / 60)
                     time_display = f"{minutes} minutes"
@@ -78,7 +72,6 @@ class Leaderboard(commands.Cog):
                     days = round(lifespan_seconds / SECONDS_PER_DAY, 1)
                     time_display = f"{days} days"
 
-                # Create visual bar showing relative lifespan
                 if max_lifespan > 0:
                     relative_percentage = (lifespan_seconds / max_lifespan) * 100
                     lifespan_bar = SethVisuals.resource_bar(int(relative_percentage), 100)
@@ -97,10 +90,9 @@ class Leaderboard(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command(name='generations')
-    async def top_generations(self, ctx):
+    async def top_generations(self, ctx: commands.Context) -> None:
         """Show highest generation Seths"""
         async with aiosqlite.connect(self.db_path) as db:
-            # Get all Seths sorted by generation
             cursor = await db.execute(
                 """SELECT name, generation, is_alive, user_id
                 FROM seths
@@ -125,7 +117,6 @@ class Leaderboard(commands.Cog):
                 user = self.bot.get_user(user_id)
                 username = user.name if user else "Unknown"
 
-                # Create visual bar for generation
                 gen_bar = SethVisuals.resource_bar(gen, max_gen)
 
                 status = "🟢 ALIVE" if is_alive else "💀 DEAD"
@@ -141,12 +132,11 @@ class Leaderboard(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command(name='mystats')
-    async def my_stats(self, ctx):
+    async def my_stats(self, ctx: commands.Context) -> None:
         """Show your personal Seth statistics"""
         user_id = ctx.author.id
 
         async with aiosqlite.connect(self.db_path) as db:
-            # Get current Seth
             cursor = await db.execute(
                 """SELECT name, generation, health, hunger
                 FROM seths WHERE user_id = ? AND is_alive = 1""",
@@ -154,21 +144,18 @@ class Leaderboard(commands.Cog):
             )
             current = await cursor.fetchone()
 
-            # Get total Seths created
             cursor = await db.execute(
                 "SELECT COUNT(*) FROM seths WHERE user_id = ?",
                 (user_id,)
             )
             total_seths = (await cursor.fetchone())[0]
 
-            # Get highest generation
             cursor = await db.execute(
                 "SELECT MAX(generation) FROM seths WHERE user_id = ?",
                 (user_id,)
             )
             max_gen = (await cursor.fetchone())[0] or 0
 
-            # Get total resources
             cursor = await db.execute(
                 "SELECT food, medicine, coal FROM resources WHERE user_id = ?",
                 (user_id,)
@@ -210,5 +197,5 @@ class Leaderboard(commands.Cog):
 
             await ctx.send(embed=embed)
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Leaderboard(bot))

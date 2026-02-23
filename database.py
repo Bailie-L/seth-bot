@@ -6,7 +6,7 @@ import aiosqlite
 import os
 from config import DATABASE_PATH, DEFAULT_RELATIONSHIP_SCORE
 
-async def init_db():
+async def init_db() -> None:
     """Initialize database with all required tables"""
     
     # Ensure data directory exists
@@ -72,7 +72,7 @@ async def init_db():
         await db.commit()
         print("✅ Database initialized with all tables!")
 
-async def test_connection():
+async def test_connection() -> bool:
     """Test database connection"""
     try:
         async with aiosqlite.connect(DATABASE_PATH) as db:
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     asyncio.run(init_db())
     asyncio.run(test_connection())
 
-async def create_drama_tables():
+async def create_drama_tables() -> None:
     """Create NPC relationship tables"""
     async with aiosqlite.connect(DATABASE_PATH) as db:
         # NPC relationship matrix

@@ -125,7 +125,7 @@ HEALTH_CRITICAL_MAINT = 20
 HUNGER_STARVING_MAINT = 80
 
 
-def verify_token():
+def verify_token() -> None:
     """Call this before starting the bot, not on import"""
     if not DISCORD_TOKEN:
         raise ValueError("No Discord token found! Add DISCORD_TOKEN to .env file")

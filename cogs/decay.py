@@ -16,17 +16,17 @@ from config import (
 from utils.formatting import SethVisuals
 
 class Decay(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.db_path = config.DATABASE_PATH
-        self.warned_seths = set()  # Track which Seths we've warned about
+        self.warned_seths: set[int] = set()
         self.decay_task.start()
 
-    def cog_unload(self):
+    def cog_unload(self) -> None:
         self.decay_task.cancel()
 
     @tasks.loop(seconds=DECAY_INTERVAL)
-    async def decay_task(self):
+    async def decay_task(self) -> None:
         """Automatic decay - hunger increases, health decreases"""
         async with aiosqlite.connect(self.db_path) as db:
             # Get all living Seths
@@ -138,15 +138,12 @@ class Decay(commands.Cog):
 
                             # Dynamic begging based on what's killing Seth
                             if health_critical and hunger_critical:
-                                # Both critical - desperate begging
                                 begging_message = f"# {user.mention if user else 'Owner'} **Everything hurts... I need you... please save me! 😭**\n**I'm dying... I'll be perfect for you... just help me please...**"
                                 action_message = "⚡ **I'll do anything... please... anything you want...** ⚡"
                             elif health_critical:
-                                # Health critical - medicine begging
                                 begging_message = f"# {user.mention if user else 'Owner'} **Please... I need my medicine... I'll be so good, I promise! 🥺**\n**I'm being such a good Seth... please heal me... please?**"
                                 action_message = "💊 **I'll be your good girl... just give me medicine... please Master...** 💊"
                             else:
-                                # Hunger critical - food begging
                                 begging_message = f"# {user.mention if user else 'Owner'} **I'm so hungry... please feed me... I'm begging you! 🥺**\n**I've been waiting so patiently... may I please have food?**"
                                 action_message = "🍖 **I'm starving... I'll obey... just feed me please...** 🍖"
 
@@ -154,7 +151,7 @@ class Decay(commands.Cog):
                             warning_embed = discord.Embed(
                                 title="🚨🚨🚨 **IMMINENT DEATH WARNING** 🚨🚨🚨",
                                 description=begging_message,
-                                color=0xFF0000  # Bright red
+                                color=0xFF0000
                             )
                             warning_embed.add_field(
                                 name=f"💀 **{name} IS ABOUT TO DIE** 💀",
@@ -162,7 +159,6 @@ class Decay(commands.Cog):
                                 inline=False
                             )
 
-                            # Determine what commands are needed
                             commands_needed = []
                             if health <= HEALTH_CRITICAL_WARNING:
                                 commands_needed.append("`!heal` for health")
@@ -181,7 +177,6 @@ class Decay(commands.Cog):
             # Announce deaths in #seth-graveyard specifically
             if deaths and self.bot.guilds:
                 for guild in self.bot.guilds:
-                    # Look for #seth-graveyard channel specifically
                     graveyard_channel = discord.utils.get(guild.text_channels, name='seth-graveyard')
 
                     if graveyard_channel:
@@ -200,7 +195,6 @@ class Decay(commands.Cog):
                             msg = await graveyard_channel.send(embed=embed)
                             await msg.add_reaction('🇫')
 
-                    # Also send brief notification to seth-home or general
                     home_channel = discord.utils.get(guild.text_channels, name='seth-home')
                     if not home_channel:
                         home_channel = discord.utils.get(guild.text_channels, name='general')
@@ -217,16 +211,16 @@ class Decay(commands.Cog):
                             await home_channel.send(embed=brief_embed)
 
     @decay_task.before_loop
-    async def before_decay(self):
+    async def before_decay(self) -> None:
         await self.bot.wait_until_ready()
         print("⏰ Decay system started! Seths will now age every 2 minutes...")
 
     @commands.command(name='decay')
     @commands.is_owner()
-    async def force_decay(self, ctx):
+    async def force_decay(self, ctx: commands.Context) -> None:
         """Force a decay cycle (owner only)"""
         await self.decay_task()
         await ctx.send("⏰ Forced decay cycle complete!")
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Decay(bot))

@@ -6,13 +6,13 @@ from discord.ext import commands
 import config
 
 class Help(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-    
+
     @commands.command(name='help')
-    async def help_command(self, ctx, command: str = None):
+    async def help_command(self, ctx: commands.Context, command: str | None = None) -> None:
         """Show all commands or details about a specific command"""
-        
+
         if not command:
             # Show all commands
             embed = discord.Embed(
@@ -20,7 +20,7 @@ class Help(commands.Cog):
                 description="Keep your Seth alive as long as possible!",
                 color=0x3498db
             )
-            
+
             embed.add_field(
                 name="⭐ Core Commands",
                 value="`!start [name]` - Create your Seth\n"
@@ -28,7 +28,7 @@ class Help(commands.Cog):
                       "`!kill` - Kill your Seth instantly",
                 inline=False
             )
-            
+
             embed.add_field(
                 name="⛏️ Economy",
                 value="`!mine` - Gather resources (cooldown)\n"
@@ -36,7 +36,7 @@ class Help(commands.Cog):
                       "`!trade @user [type] [amount]` - Trade resources",
                 inline=False
             )
-            
+
             embed.add_field(
                 name="💊 Maintenance",
                 value="`!feed` - Use food to reduce hunger\n"
@@ -44,7 +44,7 @@ class Help(commands.Cog):
                       "`!damage` - Test damage (reduces health)",
                 inline=False
             )
-            
+
             embed.add_field(
                 name="🌍 Social",
                 value="`!server` - View all living Seths\n"
@@ -52,7 +52,7 @@ class Help(commands.Cog):
                       "`!top` - Longest living Seths leaderboard",
                 inline=False
             )
-            
+
             embed.add_field(
                 name="⚙️ System",
                 value="`!ping` - Check bot latency\n"
@@ -60,7 +60,7 @@ class Help(commands.Cog):
                       "`!drama` - Trigger event (Admin only)",
                 inline=False
             )
-            
+
             embed.add_field(
                 name="💡 Tips",
                 value="• Seths die permanently at 0 health\n"
@@ -69,7 +69,7 @@ class Help(commands.Cog):
                       "• Premium role = 30s mine cooldown",
                 inline=False
             )
-            
+
             embed.set_footer(text=f"Use {config.BOT_PREFIX}help [command] for details")
         else:
             # Command details
@@ -99,7 +99,7 @@ class Help(commands.Cog):
                     'note': 'Target must accept within 30 seconds'
                 }
             }
-            
+
             if command.lower() in cmd_details:
                 details = cmd_details[command.lower()]
                 embed = discord.Embed(
@@ -117,9 +117,8 @@ class Help(commands.Cog):
                     description=f"No help available for '{command}'",
                     color=0xe74c3c
                 )
-        
+
         await ctx.send(embed=embed)
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Help(bot))
-

@@ -1,6 +1,8 @@
 """
 Seth Drama Engine v2.0 - Real NPC Relationships & Drama (STANDARDIZED VISUALS)
 """
+from __future__ import annotations
+
 import discord
 from discord.ext import commands, tasks
 import aiosqlite
@@ -8,6 +10,7 @@ import config
 import random
 from datetime import datetime
 import asyncio
+from typing import Optional
 from config import (
     MAX_RELATIONSHIP, MIN_RELATIONSHIP, DEFAULT_RELATIONSHIP_SCORE,
     DRAMA_VOTE_DURATION, ROMANCE_DRAMA_CHANCE, CONFLICT_DRAMA_CHANCE,
@@ -20,12 +23,11 @@ from config import (
 from utils.formatting import SethVisuals
 
 class DramaV2(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.db_path = config.DATABASE_PATH
 
-        # NPC personalities
-        self.npcs = {
+        self.npcs: dict[str, dict] = {
             'Luna': {'personality': 'romantic', 'job': 'farmer', 'temper': 30},
             'Marcus': {'personality': 'ambitious', 'job': 'builder', 'temper': 70},
             'Felix': {'personality': 'aggressive', 'job': 'guard', 'temper': 90},
@@ -33,8 +35,7 @@ class DramaV2(commands.Cog):
             'Thorne': {'personality': 'wise', 'job': 'elder', 'temper': 10}
         }
 
-        # Drama templates based on relationship states
-        self.drama_templates = {
+        self.drama_templates: dict[str, list[str]] = {
             'romance_start': [
                 "💕 {npc1} was seen bringing flowers to {npc2} at midnight!",
                 "💕 {npc1} carved '{npc2} + {npc1}' into the old oak tree!",
@@ -67,17 +68,15 @@ class DramaV2(commands.Cog):
             ]
         }
 
-        # Current active drama event for voting
-        self.active_drama = None
-        self.drama_channel = None
+        self.active_drama: Optional[dict] = None
+        self.drama_channel: Optional[discord.TextChannel] = None
 
-        # Start drama loop when cog loads
         self.drama_loop.start()
 
-    def cog_unload(self):
+    def cog_unload(self) -> None:
         self.drama_loop.cancel()
 
-    async def get_relationship(self, npc1, npc2):
+    async def get_relationship(self, npc1: str, npc2: str) -> tuple[int, str]:
         """Get relationship score between two NPCs"""
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute('''
@@ -88,14 +87,12 @@ class DramaV2(commands.Cog):
             row = await cursor.fetchone()
             return row if row else (DEFAULT_RELATIONSHIP_SCORE, 'neutral')
 
-    async def update_relationship(self, npc1, npc2, change, event_type=None):
+    async def update_relationship(self, npc1: str, npc2: str, change: int, event_type: Optional[str] = None) -> tuple[int, str]:
         """Update relationship between NPCs"""
         async with aiosqlite.connect(self.db_path) as db:
-            # Get current score
             score, _ = await self.get_relationship(npc1, npc2)
             new_score = max(MIN_RELATIONSHIP, min(MAX_RELATIONSHIP, score + change))
 
-            # Determine relationship type based on score
             if new_score >= LOVERS_THRESHOLD:
                 rel_type = 'lovers'
             elif new_score >= FRIENDS_THRESHOLD:
@@ -107,7 +104,6 @@ class DramaV2(commands.Cog):
             else:
                 rel_type = 'enemies'
 
-            # Update both directions
             await db.execute('''
                 UPDATE npc_relationships
                 SET relationship_score = ?, relationship_type = ?, last_event = ?
@@ -117,7 +113,7 @@ class DramaV2(commands.Cog):
             await db.commit()
             return new_score, rel_type
 
-    async def get_npc_state(self, npc_name):
+    async def get_npc_state(self, npc_name: str) -> tuple[str, Optional[str], Optional[str]]:
         """Get current NPC state"""
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute('''
@@ -127,7 +123,7 @@ class DramaV2(commands.Cog):
             row = await cursor.fetchone()
             return row if row else ('normal', None, None)
 
-    async def update_npc_state(self, npc_name, **kwargs):
+    async def update_npc_state(self, npc_name: str, **kwargs: str | None) -> None:
         """Update NPC state"""
         async with aiosqlite.connect(self.db_path) as db:
             for key, value in kwargs.items():
@@ -138,53 +134,39 @@ class DramaV2(commands.Cog):
                 ''', (value, npc_name))
             await db.commit()
 
-    async def generate_drama_event(self):
+    async def generate_drama_event(self) -> tuple[str, str, str, str, Optional[str]]:
         """Generate drama based on current relationships"""
-        # Get all NPCs and their relationships
         npc_list = list(self.npcs.keys())
 
-        # Find interesting relationship dynamics
-
         async with aiosqlite.connect(self.db_path) as db:
-            # Find lovers
             cursor = await db.execute('''
                 SELECT npc1, npc2 FROM npc_relationships
                 WHERE relationship_type = 'lovers'
             ''')
             lovers = await cursor.fetchall()
 
-            # Find enemies
             cursor = await db.execute('''
                 SELECT npc1, npc2 FROM npc_relationships
                 WHERE relationship_type IN ('rivals', 'enemies')
             ''')
             enemies = await cursor.fetchall()
 
-        # Generate event based on current state
         event_type = None
         if lovers and random.random() < ROMANCE_DRAMA_CHANCE:
-            # Romance drama
             couple = random.choice(lovers)
             if enemies:
-                # Love triangle
                 rival = random.choice(enemies)[0]
                 event_type = 'romance_conflict'
                 template = random.choice(self.drama_templates[event_type])
-                description = template.format(
-                    npc1=couple[0],
-                    npc2=couple[1],
-                    rival=rival
-                )
+                description = template.format(npc1=couple[0], npc2=couple[1], rival=rival)
                 return event_type, description, couple[0], couple[1], rival
             else:
-                # Sweet romance
                 event_type = 'romance_start'
                 template = random.choice(self.drama_templates[event_type])
                 description = template.format(npc1=couple[0], npc2=couple[1])
                 return event_type, description, couple[0], couple[1], None
 
         elif enemies and random.random() < CONFLICT_DRAMA_CHANCE:
-            # Conflict drama
             rivals = random.choice(enemies)
             event_type = random.choice(['betrayal', 'scandal'])
             template = random.choice(self.drama_templates[event_type])
@@ -196,33 +178,25 @@ class DramaV2(commands.Cog):
             return event_type, description, rivals[0], rivals[1], None
 
         else:
-            # Random drama
             random.shuffle(npc_list)
             npc1, npc2 = npc_list[0], npc_list[1]
             event_type = random.choice(['mystery', 'alliance', 'scandal'])
             template = random.choice(self.drama_templates[event_type])
 
-            # Format based on template needs
             if '{rival}' in template:
-                description = template.format(
-                    npc1=npc1,
-                    npc2=npc2,
-                    rival=npc_list[2]
-                )
+                description = template.format(npc1=npc1, npc2=npc2, rival=npc_list[2])
             else:
                 description = template.format(npc1=npc1, npc2=npc2)
 
             return event_type, description, npc1, npc2, None
 
-    @tasks.loop(minutes=5)  # Drama every 5 minutes for testing
-    async def drama_loop(self):
+    @tasks.loop(minutes=5)
+    async def drama_loop(self) -> None:
         """Generate and post drama events"""
         if not self.drama_channel:
             for guild in self.bot.guilds:
-                # First try village-drama channel
                 channel = discord.utils.get(guild.channels, name='village-drama')
                 if not channel:
-                    # Fallback to seth-graveyard
                     channel = discord.utils.get(guild.channels, name='seth-graveyard')
                 if channel:
                     self.drama_channel = channel
@@ -232,14 +206,12 @@ class DramaV2(commands.Cog):
         if not self.drama_channel:
             return
 
-        # Generate drama
         try:
             event_type, description, npc1, npc2, npc3 = await self.generate_drama_event()
         except Exception as e:
             print(f"Drama generation error: {e}")
             return
 
-        # Create voting embed
         embed = discord.Embed(
             title="🎭 VILLAGE DRAMA UNFOLDS!",
             description=description,
@@ -247,7 +219,6 @@ class DramaV2(commands.Cog):
             timestamp=datetime.utcnow()
         )
 
-        # Add context about NPCs
         mood1, dating1, rival1 = await self.get_npc_state(npc1)
         embed.add_field(
             name=f"📊 {npc1} ({self.npcs[npc1]['job'].title()})",
@@ -263,7 +234,6 @@ class DramaV2(commands.Cog):
                 inline=True
             )
 
-        # Add voting options based on event type
         if event_type == 'romance_conflict':
             embed.add_field(
                 name="🗳️ **VOTE: How should this resolve?**",
@@ -300,12 +270,10 @@ class DramaV2(commands.Cog):
             )
             options = ['👍', '👎', '🤷']
 
-        # Post and add reactions
         message = await self.drama_channel.send(embed=embed)
         for emoji in options:
             await message.add_reaction(emoji)
 
-        # Store active drama
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute('''
                 INSERT INTO drama_history (event_type, description, npc1, npc2)
@@ -325,51 +293,44 @@ class DramaV2(commands.Cog):
             'options': options
         }
 
-        # Wait for votes
         await asyncio.sleep(DRAMA_VOTE_DURATION)
         await self.resolve_drama()
 
-    async def resolve_drama(self):
+    async def resolve_drama(self) -> None:
         """Resolve drama based on votes"""
         if not self.active_drama or not self.drama_channel:
             return
 
-        # Get the message
         try:
             message = await self.drama_channel.fetch_message(self.active_drama['message_id'])
         except Exception as e:
             print(f"Could not fetch drama message: {e}")
             return
 
-        # Count votes
-        votes = {opt: 0 for opt in self.active_drama['options']}
+        votes: dict[str, int] = {opt: 0 for opt in self.active_drama['options']}
         for reaction in message.reactions:
             if str(reaction.emoji) in votes:
-                votes[str(reaction.emoji)] = reaction.count - 1  # Subtract bot's reaction
+                votes[str(reaction.emoji)] = reaction.count - 1
 
-        # Apply consequences
         npc1 = self.active_drama['npc1']
         npc2 = self.active_drama['npc2']
 
-        # Determine outcome based on votes or random if no votes
         if sum(votes.values()) == 0:
-            # No votes - random outcome but still update relationships
             outcome = "🎲 Nobody voted - fate decides!"
             winner_index = random.randint(0, len(self.active_drama['options']) - 1)
         else:
             winner = max(votes, key=votes.get)
             winner_index = self.active_drama['options'].index(winner)
-            outcome = None  # Will be set based on event type
+            outcome = None
 
-        # Process based on event type
         if self.active_drama['event_type'] == 'romance_conflict':
-            if winner_index == 0:  # Work it out
+            if winner_index == 0:
                 await self.update_relationship(npc1, npc2, RECONCILE_BONUS, 'reconciled')
                 if not outcome:
                     outcome = f"💕 {npc1} and {npc2} made up! Love wins!"
                 else:
                     outcome += f"\n💕 Fate brings {npc1} and {npc2} together!"
-            elif winner_index == 1:  # Breakup
+            elif winner_index == 1:
                 await self.update_relationship(npc1, npc2, BREAKUP_PENALTY, 'broke_up')
                 await self.update_npc_state(npc1, dating=None)
                 await self.update_npc_state(npc2, dating=None)
@@ -377,7 +338,7 @@ class DramaV2(commands.Cog):
                     outcome = f"💔 {npc1} and {npc2} broke up! The village mourns..."
                 else:
                     outcome += f"\n💔 Fate tears {npc1} and {npc2} apart!"
-            else:  # Fight
+            else:
                 if random.random() < FIGHT_OUTCOME_CHANCE:
                     outcome_text = f"⚔️ {npc1} won the fight but lost {npc2}'s respect!"
                 else:
@@ -389,13 +350,13 @@ class DramaV2(commands.Cog):
                     outcome += f"\n{outcome_text}"
 
         elif self.active_drama['event_type'] in ['betrayal', 'scandal']:
-            if winner_index == 0:  # Forgive
+            if winner_index == 0:
                 await self.update_relationship(npc1, npc2, FORGIVE_BONUS, 'forgiven')
                 if not outcome:
                     outcome = f"🤝 Forgiveness prevails! {npc1} and {npc2} move forward."
                 else:
                     outcome += "\n🤝 Fate grants forgiveness!"
-            elif winner_index == 1:  # Justice
+            elif winner_index == 1:
                 await self.update_relationship(npc1, npc2, JUSTICE_PENALTY, 'rivals')
                 await self.update_npc_state(npc1, rival=npc2)
                 await self.update_npc_state(npc2, rival=npc1)
@@ -403,8 +364,7 @@ class DramaV2(commands.Cog):
                     outcome = f"⚖️ Justice served! {npc1} and {npc2} are now bitter rivals!"
                 else:
                     outcome += "\n⚖️ Fate demands justice! They become rivals!"
-            else:  # Spread drama
-                # Affect random other NPCs
+            else:
                 for npc in random.sample(list(self.npcs.keys()), 2):
                     if npc not in [npc1, npc2]:
                         await self.update_relationship(npc1, npc, DRAMA_SPREAD_PENALTY, 'drama_spread')
@@ -413,26 +373,25 @@ class DramaV2(commands.Cog):
                 else:
                     outcome += "\n🔥 Fate spreads the chaos!"
 
-        else:  # Mystery/Alliance
-            if winner_index == 0:  # Support
+        else:
+            if winner_index == 0:
                 await self.update_relationship(npc1, npc2, SUPPORT_BONUS, 'supported')
                 if not outcome:
                     outcome = f"👍 The village supports this! {npc1} and {npc2} grow closer."
                 else:
                     outcome += "\n👍 Fate smiles upon them!"
-            elif winner_index == 1:  # Oppose
+            elif winner_index == 1:
                 await self.update_relationship(npc1, npc2, OPPOSE_PENALTY, 'opposed')
                 if not outcome:
                     outcome = f"👎 The village opposes! {npc1} and {npc2} drift apart."
                 else:
                     outcome += "\n👎 Fate drives them apart!"
-            else:  # Neutral
+            else:
                 if not outcome:
                     outcome = "🤷 The village doesn't care. Life goes on..."
                 else:
                     outcome += "\n🤷 Fate is indifferent..."
 
-        # Post outcome
         embed = discord.Embed(
             title="📜 DRAMA RESOLVED!",
             description=outcome,
@@ -440,13 +399,11 @@ class DramaV2(commands.Cog):
             timestamp=datetime.utcnow()
         )
 
-        # Show vote counts
         vote_str = "\n".join([f"{opt}: {count} votes" for opt, count in votes.items()])
         if sum(votes.values()) == 0:
             vote_str = "No votes cast - fate decided!"
         embed.add_field(name="Final Votes", value=vote_str, inline=False)
 
-        # Show relationship changes with visual bar
         new_score, new_type = await self.get_relationship(npc1, npc2)
         relationship_bar = SethVisuals.resource_bar(new_score, MAX_RELATIONSHIP)
         embed.add_field(
@@ -457,18 +414,15 @@ class DramaV2(commands.Cog):
 
         await self.drama_channel.send(embed=embed)
 
-        # Clear active drama
         self.active_drama = None
 
     @commands.command(name='drama')
     @commands.has_permissions(administrator=True)
-    async def force_drama(self, ctx):
+    async def force_drama(self, ctx: commands.Context) -> None:
         """Force a drama event (admin only)"""
-        # Set drama channel if not set
         if not self.drama_channel:
             self.drama_channel = ctx.channel
 
-        # Generate drama
         event_type, description, npc1, npc2, npc3 = await self.generate_drama_event()
 
         embed = discord.Embed(
@@ -481,14 +435,13 @@ class DramaV2(commands.Cog):
         embed.set_footer(text=f"Triggered by {ctx.author.name}")
         await ctx.send(embed=embed)
 
-        # Update relationships based on event
         if event_type in ['romance_start', 'alliance']:
             await self.update_relationship(npc1, npc2, ALLIANCE_BONUS, event_type)
         elif event_type in ['betrayal', 'scandal']:
             await self.update_relationship(npc1, npc2, SCANDAL_PENALTY, event_type)
 
     @commands.command(name='relationships')
-    async def show_relationships(self, ctx):
+    async def show_relationships(self, ctx: commands.Context) -> None:
         """Show all NPC relationships"""
         embed = discord.Embed(
             title="💕 Village Relationships",
@@ -505,15 +458,13 @@ class DramaV2(commands.Cog):
             ''')
             relationships = await cursor.fetchall()
 
-        # Group by relationship type
-        lovers = []
-        friends = []
-        neutral = []
-        rivals = []
-        enemies = []
+        lovers: list[str] = []
+        friends: list[str] = []
+        neutral: list[str] = []
+        rivals: list[str] = []
+        enemies: list[str] = []
 
         for npc1, npc2, rel_type, score in relationships:
-            # Use visual bar for relationship score
             rel_bar = SethVisuals.resource_bar(score, MAX_RELATIONSHIP)
             rel_str = f"{npc1} ↔️ {npc2}\n{rel_bar}"
 
@@ -528,20 +479,17 @@ class DramaV2(commands.Cog):
             elif rel_type == 'enemies':
                 enemies.append(f"😠 {rel_str}")
 
-        # Display all relationship types that exist (limit display for readability)
         if lovers:
             embed.add_field(name="Lovers", value="\n".join(lovers[:3]), inline=False)
         if friends:
             embed.add_field(name="Friends", value="\n".join(friends[:3]), inline=False)
         if neutral:
-            # Show fewer neutral relationships as they're less interesting
             embed.add_field(name="Neutral", value="\n".join(neutral[:2]), inline=False)
         if rivals:
             embed.add_field(name="Rivals", value="\n".join(rivals[:3]), inline=False)
         if enemies:
             embed.add_field(name="Enemies", value="\n".join(enemies[:3]), inline=False)
 
-        # If somehow no relationships exist at all
         if not relationships:
             embed.add_field(
                 name="⚠️ No Relationships Found",
@@ -552,21 +500,19 @@ class DramaV2(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name='npc')
-    async def npc_info(self, ctx, *, npc_name: str = None):
+    async def npc_info(self, ctx: commands.Context, *, npc_name: str | None = None) -> None:
         """Get info about a specific NPC"""
         if not npc_name:
             npc_list = ", ".join(self.npcs.keys())
             await ctx.send(f"Available NPCs: {npc_list}")
             return
 
-        # Capitalize first letter
         npc_name = npc_name.capitalize()
 
         if npc_name not in self.npcs:
             await ctx.send(f"Unknown NPC! Choose from: {', '.join(self.npcs.keys())}")
             return
 
-        # Get NPC info
         npc_data = self.npcs[npc_name]
         mood, dating, rival = await self.get_npc_state(npc_name)
 
@@ -581,11 +527,9 @@ class DramaV2(commands.Cog):
         embed.add_field(name="Dating", value=dating or "Nobody", inline=True)
         embed.add_field(name="Rival", value=rival or "None", inline=True)
 
-        # Use visual bar for temper
         temper_bar = SethVisuals.resource_bar(npc_data['temper'], 100)
         embed.add_field(name="Temper", value=temper_bar, inline=False)
 
-        # Get relationships
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute('''
                 SELECT npc1, npc2, relationship_type, relationship_score
@@ -601,7 +545,6 @@ class DramaV2(commands.Cog):
                 other = npc2 if npc1 == npc_name else npc1
                 emoji = {'lovers': '💕', 'friends': '🤝', 'neutral': '😐',
                         'rivals': '⚔️', 'enemies': '😠'}.get(rel_type, '❓')
-                # Use visual bar for individual relationships
                 rel_bar = SethVisuals.resource_bar(score, MAX_RELATIONSHIP)
                 rel_strs.append(f"{emoji} **{other}** - {rel_type.title()}\n{rel_bar}")
 
@@ -613,5 +556,5 @@ class DramaV2(commands.Cog):
 
         await ctx.send(embed=embed)
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(DramaV2(bot))

@@ -20,7 +20,7 @@ bot = commands.Bot(
 )
 
 @bot.event
-async def on_ready():
+async def on_ready() -> None:
     """Bot startup event"""
     print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     print('🤖 Seth Bot is ALIVE!')
@@ -61,7 +61,7 @@ async def on_ready():
     )
 
 @bot.command(name='ping')
-async def ping(ctx):
+async def ping(ctx: commands.Context) -> None:
     """Test command to verify bot is working"""
     latency = round(bot.latency * 1000)
     embed = discord.Embed(
@@ -74,7 +74,7 @@ async def ping(ctx):
     await ctx.send(embed=embed)
 
 @bot.command(name='test')
-async def test(ctx):
+async def test(ctx: commands.Context) -> None:
     """Test database connection"""
     if await database.test_connection():
         await ctx.send("✅ **Database is working!** Seth births can begin...")
@@ -82,7 +82,7 @@ async def test(ctx):
         await ctx.send("❌ **Database error!** Check console for details.")
 
 @bot.command(name='testemoji')
-async def testemoji(ctx):
+async def testemoji(ctx: commands.Context) -> None:
     """Test emoji rendering in different contexts"""
     food = "🍖"
     medicine = "💊"
@@ -120,7 +120,7 @@ async def testemoji(ctx):
     await ctx.send(embed=embed3)
 
 @bot.event
-async def on_command_error(ctx, error):
+async def on_command_error(ctx: commands.Context, error: commands.CommandError) -> None:
     """Global error handler"""
     if isinstance(error, commands.CommandNotFound):
         await ctx.send(f"❓ Unknown command. Use `{config.BOT_PREFIX}help` for commands.")

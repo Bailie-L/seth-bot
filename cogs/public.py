@@ -13,12 +13,12 @@ from config import (
 )
 
 class Public(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.db_path = config.DATABASE_PATH
 
     @commands.command(name='server')
-    async def server_seths(self, ctx):
+    async def server_seths(self, ctx: commands.Context) -> None:
         """Show all living Seths in the server"""
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute(
@@ -41,11 +41,9 @@ class Public(commands.Cog):
             )
 
             for name, gen, health, hunger, birth_time, owner in living_seths:
-                # Calculate age
                 birth = datetime.fromisoformat(birth_time)
                 age_minutes = int((datetime.now() - birth).total_seconds() / 60)
 
-                # Health status emoji
                 if health > HEALTH_GOOD_DISPLAY:
                     status = "💚"
                 elif health > HEALTH_POOR_DISPLAY:
@@ -53,7 +51,6 @@ class Public(commands.Cog):
                 else:
                     status = "💔"
 
-                # Hunger status
                 if hunger > HUNGER_STARVING_DISPLAY:
                     hunger_status = "🔴 Starving!"
                 elif hunger > HUNGER_HUNGRY_DISPLAY:
@@ -71,19 +68,16 @@ class Public(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command(name='compare')
-    async def compare_seths(self, ctx, *, target=None):
+    async def compare_seths(self, ctx: commands.Context, *, target: str | None = None) -> None:
         """Compare your Seth with another user's Seth"""
         if target is None:
             await ctx.send("⚠️ Usage: `!compare @user` (mention someone)")
             return
 
-        # Try to get member from mentions
         if ctx.message.mentions:
             member = ctx.message.mentions[0]
         else:
-            # Try to find member by name/nickname
             try:
-                # Remove @ if present
                 target = target.replace('@', '')
                 member = discord.utils.get(ctx.guild.members, name=target)
                 if not member:
@@ -104,7 +98,6 @@ class Public(commands.Cog):
             return
 
         async with aiosqlite.connect(self.db_path) as db:
-            # Get author's Seth
             cursor = await db.execute(
                 """SELECT s.name, s.generation, s.health, s.hunger, s.birth_time
                 FROM seths s
@@ -113,7 +106,6 @@ class Public(commands.Cog):
             )
             author_seth = await cursor.fetchone()
 
-            # Get target's Seth
             cursor = await db.execute(
                 """SELECT s.name, s.generation, s.health, s.hunger, s.birth_time
                 FROM seths s
@@ -130,15 +122,12 @@ class Public(commands.Cog):
                 await ctx.send(f"💀 {member.name} doesn't have a living Seth!")
                 return
 
-            # Parse data
             a_name, a_gen, a_health, a_hunger, a_birth = author_seth
             t_name, t_gen, t_health, t_hunger, t_birth = target_seth
 
-            # Calculate ages
             a_age = int((datetime.now() - datetime.fromisoformat(a_birth)).total_seconds() / 60)
             t_age = int((datetime.now() - datetime.fromisoformat(t_birth)).total_seconds() / 60)
 
-            # Determine winner
             a_score = a_health + (100 - a_hunger) + (a_gen * GENERATION_SCORE_WEIGHT) + (a_age // AGE_SCORE_DIVISOR)
             t_score = t_health + (100 - t_hunger) + (t_gen * GENERATION_SCORE_WEIGHT) + (t_age // AGE_SCORE_DIVISOR)
 
@@ -158,21 +147,14 @@ class Public(commands.Cog):
                 color=color
             )
 
-            # Author's Seth
             embed.add_field(
                 name=f"{ctx.author.name}'s {a_name}",
                 value=f"**Gen:** {a_gen}\n**Health:** {a_health}/100\n**Hunger:** {a_hunger}/100\n**Age:** {a_age} min\n**Score:** {a_score}",
                 inline=True
             )
 
-            # VS
-            embed.add_field(
-                name="⚔️",
-                value="**VS**",
-                inline=True
-            )
+            embed.add_field(name="⚔️", value="**VS**", inline=True)
 
-            # Target's Seth
             embed.add_field(
                 name=f"{member.name}'s {t_name}",
                 value=f"**Gen:** {t_gen}\n**Health:** {t_health}/100\n**Hunger:** {t_hunger}/100\n**Age:** {t_age} min\n**Score:** {t_score}",
@@ -181,5 +163,5 @@ class Public(commands.Cog):
 
             await ctx.send(embed=embed)
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Public(bot))

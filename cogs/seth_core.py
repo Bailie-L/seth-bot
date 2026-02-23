@@ -15,16 +15,15 @@ from utils.formatting import SethVisuals
 from utils.status import get_health_status, get_hunger_status, get_health_color
 
 class SethCore(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.db_path = config.DATABASE_PATH
 
     @commands.command(name='start')
-    async def start_seth(self, ctx, *, name: str = None):
+    async def start_seth(self, ctx: commands.Context, *, name: str | None = None) -> None:
         """Create your first Seth or continue bloodline"""
         user_id = ctx.author.id
 
-        # Check if user already has a living Seth
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute(
                 "SELECT name, generation FROM seths WHERE user_id = ? AND is_alive = 1",
@@ -41,19 +40,16 @@ class SethCore(commands.Cog):
                 await ctx.send(embed=embed)
                 return
 
-            # Create new user if needed
             await db.execute(
                 "INSERT OR IGNORE INTO users (user_id, discord_name) VALUES (?, ?)",
                 (user_id, str(ctx.author))
             )
 
-            # Initialize resources for new user
             await db.execute(
                 "INSERT OR IGNORE INTO resources (user_id) VALUES (?)",
                 (user_id,)
             )
 
-            # Get generation number (check for dead parent)
             cursor = await db.execute(
                 "SELECT MAX(generation) FROM seths WHERE user_id = ?",
                 (user_id,)
@@ -61,10 +57,8 @@ class SethCore(commands.Cog):
             result = await cursor.fetchone()
             generation = (result[0] + 1) if result[0] else 1
 
-            # Name the Seth
             seth_name = f"{name} Seth" if name else "Seth Jr."
 
-            # Create the Seth!
             await db.execute(
                 """INSERT INTO seths
                 (user_id, name, generation, health, hunger, is_alive)
@@ -74,14 +68,12 @@ class SethCore(commands.Cog):
             )
             await db.commit()
 
-            # Birth announcement with standardized display
             embed = discord.Embed(
                 title="🎉 A SETH IS BORN!",
                 description=f"**{seth_name}** (Generation {generation}) has entered the world!",
                 color=discord.Color.green()
             )
 
-            # Use standardized visual bars
             health_display = SethVisuals.health_bar(config.STARTING_HEALTH, MAX_HEALTH)
             hunger_display = SethVisuals.hunger_bar(config.STARTING_HUNGER)
 
@@ -93,12 +85,11 @@ class SethCore(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command(name='status')
-    async def status(self, ctx):
+    async def status(self, ctx: commands.Context) -> None:
         """Check your Seth's vital signs"""
         user_id = ctx.author.id
 
         async with aiosqlite.connect(self.db_path) as db:
-            # Get Seth data
             cursor = await db.execute(
                 """SELECT name, generation, health, hunger, birth_time
                 FROM seths WHERE user_id = ? AND is_alive = 1""",
@@ -117,32 +108,26 @@ class SethCore(commands.Cog):
 
             name, gen, health, hunger, birth_time = seth
 
-            # Get status text for health and hunger
             health_status = get_health_status(health)
             hunger_status = get_hunger_status(hunger)
 
-            # Use standardized visual bars
             health_display = SethVisuals.health_bar(health, MAX_HEALTH)
             hunger_display = SethVisuals.hunger_bar(hunger)
 
-            # Calculate age
             birth = datetime.fromisoformat(birth_time)
             age = (datetime.utcnow() - birth).days
 
-            # Status embed
             embed = discord.Embed(
                 title=f"📊 {name} Status",
                 color=get_health_color(health)
             )
 
-            # Standardized health display
             embed.add_field(
                 name="❤️ Health",
                 value=f"{health_display} [{health_status}]",
                 inline=False
             )
 
-            # Standardized stomach display
             embed.add_field(
                 name="🍖 Stomach",
                 value=f"{hunger_display} [{hunger_status}]",
@@ -152,14 +137,12 @@ class SethCore(commands.Cog):
             embed.add_field(name="🧬 Generation", value=gen, inline=True)
             embed.add_field(name="📅 Age", value=f"{age} days", inline=True)
 
-            # Critical warning messages with clear instructions
             if health < HEALTH_CRITICAL_STATUS or hunger > HUNGER_CRITICAL_STATUS:
                 embed.add_field(
                     name="🚨 **CRITICAL WARNING** 🚨",
                     value="**Wake up ass-hole, I'm starving!!! Feed me now!**",
                     inline=False
                 )
-                # Add specific action needed based on what's critical
                 if health < HEALTH_CRITICAL_STATUS and hunger > HUNGER_CRITICAL_STATUS:
                     embed.add_field(
                         name="💀 BOTH CRITICAL",
@@ -185,7 +168,7 @@ class SethCore(commands.Cog):
 
             await ctx.send(embed=embed)
 
-    async def announce_death(self, ctx, seth_name, generation, cause="Natural causes"):
+    async def announce_death(self, ctx: commands.Context, seth_name: str, generation: int, cause: str = "Natural causes") -> None:
         """Announce death in #seth-graveyard channel"""
         graveyard_channel = discord.utils.get(ctx.guild.channels, name="seth-graveyard")
         if graveyard_channel:
@@ -201,12 +184,11 @@ class SethCore(commands.Cog):
             await msg.add_reaction("🇫")
 
     @commands.command(name="kill")
-    async def kill_seth(self, ctx):
+    async def kill_seth(self, ctx: commands.Context) -> None:
         """TEST COMMAND: Kill your Seth instantly"""
         user_id = ctx.author.id
 
         async with aiosqlite.connect(self.db_path) as db:
-            # Get living Seth
             cursor = await db.execute(
                 """SELECT seth_id, name, generation, birth_time
                 FROM seths WHERE user_id = ? AND is_alive = 1""",
@@ -220,11 +202,9 @@ class SethCore(commands.Cog):
 
             seth_id, name, gen, birth_time = seth
 
-            # Calculate lifespan
             birth = datetime.fromisoformat(birth_time)
             lived_days = (datetime.utcnow() - birth).days
 
-            # Kill the Seth
             death_time = datetime.utcnow()
             await db.execute(
                 """UPDATE seths
@@ -233,8 +213,6 @@ class SethCore(commands.Cog):
                 (death_time, "Murdered by owner (test)", seth_id)
             )
 
-            # Add to graveyard
-            # Announce death publicly
             await self.announce_death(ctx, name, gen, "Murdered by owner")
             await db.execute(
                 """INSERT INTO graveyard
@@ -246,7 +224,6 @@ class SethCore(commands.Cog):
 
             await db.commit()
 
-            # Death announcement
             embed = discord.Embed(
                 title="💀 SETH HAS DIED!",
                 description=f"**{name}** (Generation {gen}) has been murdered!",
@@ -259,5 +236,5 @@ class SethCore(commands.Cog):
 
             await ctx.send(embed=embed)
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(SethCore(bot))

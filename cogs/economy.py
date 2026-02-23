@@ -14,18 +14,17 @@ from config import (
 )
 
 class Economy(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.db_path = config.DATABASE_PATH
-        self.cooldowns = {}  # user_id: last_mine_time
-        # Store emojis as variables
+        self.cooldowns: dict[int, datetime] = {}
         self.food_emoji = "🍖"
         self.medicine_emoji = "💊"
         self.coal_emoji = "⚫"
         self.star_emoji = "⭐"
 
     @commands.command(name='mine')
-    async def mine(self, ctx):
+    async def mine(self, ctx: commands.Context) -> None:
         """Mine for resources with cooldown"""
         user_id = ctx.author.id
 
@@ -44,7 +43,6 @@ class Economy(commands.Cog):
                 return
 
         async with aiosqlite.connect(self.db_path) as db:
-            # Check if user has a living Seth
             cursor = await db.execute(
                 "SELECT name FROM seths WHERE user_id = ? AND is_alive = 1",
                 (user_id,)
@@ -57,12 +55,10 @@ class Economy(commands.Cog):
 
             seth_name = seth[0]
 
-            # Mine resources
             food = random.randint(FOOD_MINE_MIN, FOOD_MINE_MAX)
             medicine = random.randint(MEDICINE_MINE_MIN, MEDICINE_MINE_MAX)
             coal = random.randint(COAL_MINE_MIN, COAL_MINE_MAX)
 
-            # Update resources
             await db.execute(
                 """INSERT OR REPLACE INTO resources (user_id, food, medicine, coal)
                 VALUES (?,
@@ -73,38 +69,25 @@ class Economy(commands.Cog):
             )
             await db.commit()
 
-            # Get totals
             cursor = await db.execute(
                 "SELECT food, medicine, coal FROM resources WHERE user_id = ?",
                 (user_id,)
             )
             totals = await cursor.fetchone()
 
-            # Update cooldown
             self.cooldowns[user_id] = datetime.now()
 
-            # Build response embed
             embed = discord.Embed(
                 title="⛏️ Mining Complete!",
                 description=f"{seth_name} gathered resources!",
                 color=0x8B4513
             )
 
-            # Build found string with explicit emoji variables
             found_str = f"{self.food_emoji} Food: +{food}   {self.medicine_emoji} Medicine: +{medicine}   {self.coal_emoji} Coal: +{coal}"
-            embed.add_field(
-                name="Found",
-                value=found_str,
-                inline=False
-            )
+            embed.add_field(name="Found", value=found_str, inline=False)
 
-            # Build inventory string with explicit emoji variables
             inv_str = f"{self.food_emoji} {totals[0]}   {self.medicine_emoji} {totals[1]}   {self.coal_emoji} {totals[2]}"
-            embed.add_field(
-                name="Total Inventory",
-                value=inv_str,
-                inline=False
-            )
+            embed.add_field(name="Total Inventory", value=inv_str, inline=False)
 
             cooldown_msg = f"Next mine in {cooldown_seconds} seconds"
             if is_premium:
@@ -114,7 +97,7 @@ class Economy(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command(name='inventory', aliases=['inv'])
-    async def inventory(self, ctx):
+    async def inventory(self, ctx: commands.Context) -> None:
         """Check your resources"""
         user_id = ctx.author.id
 
@@ -134,24 +117,11 @@ class Economy(commands.Cog):
                 color=0x4CAF50
             )
 
-            # Use explicit emoji variables for field names
-            embed.add_field(
-                name=f"{self.food_emoji} Food",
-                value=str(resources[0]),
-                inline=True
-            )
-            embed.add_field(
-                name=f"{self.medicine_emoji} Medicine",
-                value=str(resources[1]),
-                inline=True
-            )
-            embed.add_field(
-                name=f"{self.coal_emoji} Coal",
-                value=str(resources[2]),
-                inline=True
-            )
+            embed.add_field(name=f"{self.food_emoji} Food", value=str(resources[0]), inline=True)
+            embed.add_field(name=f"{self.medicine_emoji} Medicine", value=str(resources[1]), inline=True)
+            embed.add_field(name=f"{self.coal_emoji} Coal", value=str(resources[2]), inline=True)
 
             await ctx.send(embed=embed)
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Economy(bot))
