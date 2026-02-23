@@ -1,6 +1,5 @@
 """
 Seth Decay System - Automatic hunger and health decay (STANDARDIZED VISUALS)
-Now with hypno gateway tracking
 """
 import discord
 from discord.ext import commands, tasks
@@ -14,50 +13,10 @@ class Decay(commands.Cog):
         self.bot = bot
         self.db_path = config.DATABASE_PATH
         self.warned_seths = set()  # Track which Seths we've warned about
-        self.warning_messages = {}  # Track warning messages for response monitoring
         self.decay_task.start()
 
     def cog_unload(self):
         self.decay_task.cancel()
-
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        """Track responses to begging messages for hypno gateway"""
-        # Ignore bot messages
-        if message.author.bot:
-            return
-
-        # Check if this is a response to a recent warning
-        if message.channel.id in self.warning_messages:
-            warning_data = self.warning_messages[message.channel.id]
-
-            # Check if message is from the Seth owner and within 5 minutes
-            if message.author.id == warning_data['user_id']:
-                time_diff = (datetime.utcnow() - warning_data['time']).seconds
-                if time_diff < 300:  # 5 minute window
-
-                    # Check for submissive/hypno trigger responses
-                    content_lower = message.content.lower()
-                    hypno_triggers = [
-                        'good girl', 'good boy', 'good seth',
-                        'obey', 'yes master', 'yes mistress',
-                        'be good', 'good pet', 'submit'
-                    ]
-
-                    if any(trigger in content_lower for trigger in hypno_triggers):
-                        # Mark user as hypno-interested in database
-                        async with aiosqlite.connect(self.db_path) as db:
-                            # Add hypno_interest flag if not exists
-                            await db.execute(
-                                """UPDATE users
-                                SET is_premium = is_premium | 2
-                                WHERE user_id = ?""",
-                                (message.author.id,)
-                            )
-                            await db.commit()
-
-                        # Clean up tracking after successful detection
-                        del self.warning_messages[message.channel.id]
 
     @tasks.loop(seconds=120)  # Run every 120 seconds (doubled from 60)
     async def decay_task(self):
@@ -211,22 +170,6 @@ class Decay(commands.Cog):
                             warning_embed.set_footer(text="⏰ You have less than 2 minutes to save your Seth!")
 
                             await warning_channel.send(embed=warning_embed)
-
-                            # Track this warning for response monitoring
-                            self.warning_messages[warning_channel.id] = {
-                                'user_id': user_id,
-                                'time': datetime.utcnow(),
-                                'seth_name': name
-                            }
-
-            # Clean up old warning tracking (older than 5 minutes)
-            current_time = datetime.utcnow()
-            channels_to_clean = []
-            for channel_id, data in self.warning_messages.items():
-                if (current_time - data['time']).seconds > 300:
-                    channels_to_clean.append(channel_id)
-            for channel_id in channels_to_clean:
-                del self.warning_messages[channel_id]
 
             # Announce deaths in #seth-graveyard specifically
             if deaths and self.bot.guilds:

@@ -81,10 +81,12 @@ class Trading(commands.Cog):
             await ctx.send("🤖 Bots don't have Seths! They can't trade.")
             return
 
-        # Validate resource type
-        if resource not in ['food', 'medicine', 'coal']:
+        # Validate resource type with safe column mapping
+        safe_columns = {'food': 'food', 'medicine': 'medicine', 'coal': 'coal'}
+        if resource not in safe_columns:
             await ctx.send("❌ Invalid resource! Choose: `food`, `medicine`, or `coal`")
             return
+        column = safe_columns[resource]
 
         if amount <= 0:
             await ctx.send("❌ Amount must be positive!")
@@ -118,7 +120,7 @@ class Trading(commands.Cog):
 
             # Check author has enough resources
             cursor = await db.execute(
-                f"SELECT {resource} FROM resources WHERE user_id = ?",
+                f"SELECT {column} FROM resources WHERE user_id = ?",
                 (ctx.author.id,)
             )
             result = await cursor.fetchone()
@@ -201,12 +203,12 @@ class Trading(commands.Cog):
                 async with aiosqlite.connect(self.db_path) as db:
                     # Remove from sender
                     await db.execute(
-                        f"UPDATE resources SET {resource} = {resource} - ? WHERE user_id = ?",
+                        f"UPDATE resources SET {column} = {column} - ? WHERE user_id = ?",
                         (amount, ctx.author.id)
                     )
                     # Add to receiver
                     await db.execute(
-                        f"UPDATE resources SET {resource} = {resource} + ? WHERE user_id = ?",
+                        f"UPDATE resources SET {column} = {column} + ? WHERE user_id = ?",
                         (amount, member.id)
                     )
                     await db.commit()
