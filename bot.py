@@ -137,4 +137,5 @@ async def on_command_error(ctx, error):
         await ctx.send("💀 Something went wrong! The Seth gods are displeased...")
 
 if __name__ == "__main__":
+    config.verify_token()
     bot.run(config.DISCORD_TOKEN)
